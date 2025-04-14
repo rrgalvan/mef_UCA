@@ -1,0 +1,164 @@
+% !TEX root = apuntes-MEF.tex
+% !TEX spellcheck = es
+
+\documentclass[11pt]{article}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Using Packages
+\usepackage[spanish]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage[hmargin={2.7cm,2.2cm}, vmargin={2.2cm, 2.2cm}]{geometry}
+\usepackage{graphicx}
+\usepackage{amssymb}
+\usepackage{amsmath}
+\usepackage{amsthm}
+\usepackage{graphicx}
+\usepackage{color}
+\usepackage{xspace}
+\usepackage{hyperref}
+\hypersetup{
+  colorlinks   = true, %Colours links instead of ugly boxes
+  urlcolor    = blue, %Colour for external hyperlinks
+  linkcolor   = blue, %Colour of internal links
+  citecolor   = green %Colour of citations
+}
+
+% \usepackage{bm} % Bold math
+% \usepackage{empheq}  % Enfatizar, añadir marcos, etc a ecuaciones
+% \usepackage{mdframed}  % Cuadros que pueden extenderse a varias páginas
+% \usepackage{booktabs} % Quality tables
+% \usepackage{psfrag}  % Gráficas (plot) en LaTeX
+% \usepackage{pgfplots} % Gráficas (plot) en LaTeX usando PGF
+
+% Cambiar el formato de la fecha, para usarlo como número de vesión
+\usepackage[yyyymmdd]{datetime}
+\renewcommand{\dateseparator}{.}
+\newdateformat{versiondate}{%
+Versión: \twodigit{\THEDAY}.\twodigit{\THEMONTH}.\twodigit{\THEYEAR}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%% Page Setting 
+% \geometry{a4paper}
+\renewcommand{\baselinestretch}{1.05}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%% Teoremas, etc
+\theoremstyle{plain}
+\newtheorem{theorem}{Teorema}[section]
+\newtheorem{lemma}[theorem]{Lema}
+\newtheorem{corolary}[theorem]{Corolario}
+\newtheorem{remark}[theorem]{Observación}
+
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definición}
+\newtheorem*{example}{Ejemplo}
+\newtheorem*{exercise}{Ejercicio}
+\newtheorem*{properties}{Propiedades}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%% Define some useful colors 
+\definecolor{ocre}{RGB}{243,102,25}
+\definecolor{mygray}{RGB}{243,243,244}
+\definecolor{deepGreen}{RGB}{26,111,0}
+\definecolor{shallowGreen}{RGB}{235,255,255}
+\definecolor{deepBlue}{RGB}{61,124,222}
+\definecolor{shallowBlue}{RGB}{235,249,255}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Plotting Settings 
+% \usepgfplotslibrary{colorbrewer}
+% \pgfplotsset{width=8cm,compat=1.9}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Párrafos
+\setcounter{secnumdepth}{5}
+\newcounter{stepnum}[section]
+\newcommand{\step}[1][]{\bigskip\noindent\textbf{\thesection.\refstepcounter{stepnum}\thestepnum}.\enspace{#1}}
+
+\renewcommand{\theparagraph}{\arabic{section}.\arabic{paragraph}}
+\renewcommand{\step}[1][]{\paragraph{#1}\hspace{-1.1em}}
+
+\newcommand{\deff}[1]{\textit{\textbf{#1}}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%% Mis definiciones
+\newcommand{\N}{\ensuremath{\mathbb{N}}}
+\newcommand{\Z}{\ensuremath{\mathbb{Z}}}
+\newcommand{\Q}{\ensuremath{\mathbb{Q}}}
+\newcommand{\R}{\ensuremath{\mathbb{R}}}
+\newcommand{\C}{\ensuremath{\mathbb{C}}}
+
+\newcommand{\xx}{\ensuremath{\mathbf{x}}\xspace}
+\newcommand{\uu}{\ensuremath{\mathbf{u}}\xspace}
+\newcommand{\vv}{\ensuremath{\mathbf {v}}\xspace}
+\newcommand{\pp}{\ensuremath{p}\xspace}
+\newcommand{\qq}{\ensuremath{q}\xspace}
+\newcommand{\ff}{\ensuremath{\mathbf{f}}\xspace}
+\newcommand{\nn}{\ensuremath{\mathbf{n}}\xspace}
+
+\newcommand{\VV}{\ensuremath{\mathbf{V}}\xspace}
+\newcommand{\QQ}{\ensuremath{Q}\xspace}
+\newcommand{\XX}{\ensuremath{\mathbf{X}}\xspace}
+\newcommand{\Dtest}{\ensuremath{\mathcal{D}}\xspace}
+
+\newcommand{\grad}{\ensuremath{\nabla}}
+\renewcommand{\div}{\ensuremath{\nabla\cdot}}
+\newcommand{\en}{\quad\text{en}\ }
+\newcommand{\sobre}{\quad\text{sobre}\ }
+
+\newcommand{\uxx}{\ensuremath{u_{xx}}\xspace}
+\newcommand{\uyy}{\ensuremath{u_{yy}}\xspace}
+
+\newcommand{\norm}[2][]{\ensuremath{\|#2\|_{#1}}}
+
+\renewcommand{\P}{\ensuremath{\mathbb{P}}}
+\newcommand{\TestSpace}{\ensuremath{\mathcal{D}}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Title & Author 
+\title{Breve Introducción al Método de los Elementos Finitos para Problemas Elípticos}
+\author{J. Rafael Rodríguez Galván}
+\date{\versiondate\today}
+
+\begin{document}
+\maketitle
+
+%----------------------------------------------------
+\section{Introducción}
+%----------------------------------------------------
+
+El objetivo de este documento es la descripción,  de una forma simple pero rigurosa, del \textbf{método de los elementos finitos} para aproximar la solución de este problema.
+A pesar de que este método despliega toda su potencia en la aproximación de problemas bidimensionales%
+\footnote{Para una introducción algo más avanzada, yo habría preferidoabordar directamente el caso bidimensional, como algunos autores de la talla de J. Sayas~\cite{sayas2008gentle}.}, %
+comenzaremos estudiando el caso $d=1$ en la siguiente sección. Más adelante se comprobará cómo los razonamientos son fácilmente generalizables  a $d\geq 2$.
+
+La idea de este método consiste en descomponer el dominio como unión de «elementos» más sencillos (por ejemplo, triángulos en el caso $2$--dimensional o en subintervalos en el caso $1$--dimensional) y aproximar la solución de~\eqref{eq:problema.modelo} mediante funciones continuas que, en cada elemento, son polinomios de un grado, $k$, preestablecido.
+
+En el caso $1$--dimensional y para $k=1$, éstas serán simplemente funciones poligonales. Pero, estas funciones, no son derivables en general. Entonces, ¿en qué sentido podemos decir que verifican~\eqref{eq:problema.modelo}? ¿Qué entendemos por derivada de una función poligonal? La respuesta está en los espacios de funciones derivables en un sentido débil que definiremos en el siguiente apartado.
+
+
+%----------------------------------------------------
+\section{Formulación variacional de problemas elípticos}
+%----------------------------------------------------
+\step
+Sea  $\Omega\subset\R^d$ un dominio abierto y acotado, en la práctica $d\in\{1,2,3\}$, con frontera $\partial\Omega$ suficientemente regular%
+\footnote{Entenderemos que la frontera es regular si es localmente parametrizable por funciones Lipschitzianas, ver por ejemplo~\cite{Ern-Guermond:04}.}.
+En el caso general, dividiremos $\partial\Omega$ en dos partes disjuntas donde impondremos respectivamente condiciones de contorno de tipo Dirichlet y Neumann: $\partial\Omega = \Gamma_D\cup\Gamma_N$,  $\Gamma_D\cap\Gamma_N=\emptyset$.  Podría ser $\Gamma_N=\emptyset$, si no se imponen condiciones Neumann (o $\Gamma_D=\emptyset$ si no hay condiciones Dirichlet).
+
+Consideremos el siguiente problema de Poisson:
+\begin{equation}
+	\left\{
+	\begin{aligned}
+		-\Delta u       & = f \en{\Omega},        \\
+		u               & =g_D \sobre{\Gamma_D},  \\
+		\grad u\cdot\nn & = g_N \sobre{\Gamma_N},
+	\end{aligned}
+	\right.
+	\label{eq:problema.modelo}
+\end{equation}
+donde $\Delta u = \partial^ 2 u/\partial x^2 + \partial^ 2 u/\partial y^2$ es el operador laplaciano, $\nn$ denota al vector unitario normal exterior sobre $\partial\Omega$  y las funciones $f:\Omega\to\R$, $g_D:\Gamma_D\to\R$, $g_N:\Gamma_N\to\R$ son datos.
+
+\step
+Más adelante veremos que, simplemente asumiendo que $f$, $g_D$ y $g_N$ sean funciones de cuadrado integrable, existe una única solución de~\eqref{eq:problema.modelo} en un sentido débil. Y,  si los datos son funciones continuas en sus dominios, ésta es la solución clásica del problema de Poisson-Dirichlet-Neumann anterior, es decir $u\in C^0(\Omega)\cap C^2(\Omega)$ y las igualdades en~\eqref{eq:problema.modelo} se verifican puntualmente, para todo $\xx\in\overline\Omega$.
+
+\step
+
+
+\bibliographystyle{unsrt}
+\bibliography{apuntes-MEF}
+\end{document}
+
+

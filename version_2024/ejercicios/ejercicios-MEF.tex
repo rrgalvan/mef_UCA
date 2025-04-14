@@ -1,0 +1,127 @@
+\documentclass[11pt]{report}
+\usepackage{graphicx}
+\usepackage{psfrag}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}   
+\usepackage[spanish]{babel} 
+\usepackage{latexsym}
+\usepackage{enumitem}
+\usepackage{amsfonts}
+\usepackage{amsmath}
+\usepackage{amsthm}
+\usepackage{amssymb}
+\usepackage{color}
+\usepackage{ragged2e}
+\usepackage{multicol}
+\usepackage{hyperref}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\def\today{\number\day \space de \ifcase\month\or
+  Enero\or Febrero\or Marzo\or Abril\or Mayo\or Junio\or
+  Julio\or Agosto\or Septiembre\or Octubre\or Noviembre\or Diciembre\fi
+  \space de \number\year}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\def\Deg{\ensuremath{^{\rm o}}}
+\def\MakeUppercase#1{#1}
+\def\uppercase#1{#1}
+\headwidth 16 cm \rhead[\small \textsf{\leftmark}]{\small
+\textsf{\thepage}} \chead{} \lhead[\small \textsf{\thepage}]{\small
+\textsf{\rightmark}}
+
+\lfoot{} \cfoot{} \rfoot{}
+
+\topmargin=0.1cm \headheight=0.17in \headsep=0.23in
+\evensidemargin=0cm \oddsidemargin=0cm \textheight=24cm
+
+\textwidth=17.3cm \footskip=0.24in
+
+\addtolength{\voffset}{-1cm}
+ % \linespread{1.3}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\parskip 5 pt
+
+\def\R{\ensuremath{\mathbb{R}}}
+\newcommand{\sen}{\mathop{\rm sen}\nolimits}
+\newcommand{\cosec}{\mathop{\rm cosec}\nolimits}
+\newcommand{\arcsen}{\mathop{\rm arcsen}\nolimits}
+\def\Deg{\ensuremath{^{\rm o}}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{document}
+\pagestyle{empty} \vspace*{-2.5cm}
+\hspace*{-1.1cm}
+
+%LOGO>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+{\fboxsep 6pt \fboxrule 0.5pt
+  \noindent
+\fbox{%
+\begin{minipage}[c]{\linewidth}
+%\hspace*{3.15cm}
+\begin{minipage}{3cm}
+\includegraphics[width=2.0cm]{logo_FacCiencias.png}
+\end{minipage}
+\begin{minipage}{0.5\linewidth}
+  \begin{center}
+    {\large\sc\bfseries{Cálculo Numérico}}\\{\medskip}
+    \normalsize{\it Grado en Matemáticas,}\\
+    \small{Facultad de Ciencias}\\{\medskip}
+    \small{\bf  Curso 2023/24}
+  \end{center}
+\end{minipage}
+\hspace*{0.45cm}
+\begin{minipage}{2.2cm}
+\includegraphics[width=4.5cm]{LogoUCA.jpg}
+\end{minipage}
+\end{minipage}}\hfill
+%<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+\vspace*{0.05cm}
+\begin{center}
+  \Large{\bf Ejercicios Método de los Elementos Finitos (versión 0.1)}
+\end{center}
+%------------------------------------------------
+
+\paragraph{Ejercicio 1.}
+Consideremos el siguiente problema de Poisson-Dirichlet: hallar $u:\Omega=(0,1)\to\mathbb R$ solución de:
+\begin{equation}
+  \left\{
+    \begin{aligned}
+    - u'' &= f \quad \text{en }\Omega, \\
+    u&=0 \quad \text{sobre }\Gamma_D, 
+  \end{aligned}
+  \right.
+  \label{eq:problema.dirichlet.homogeneo.1d}
+\end{equation}
+donde $f(x)=x(1-x)$.
+\begin{enumerate}
+  \item Determinar la formulación variacional del problema~\eqref{eq:problema.dirichlet.homogeneo.1d} y demostrar, usando el Lema de Lax-Milgram, que existe una única solución.
+  \item Definir la mediante elementos finitos del problema~\eqref{eq:problema.dirichlet.homogeneo.1d}. Escribir el sistema de ecuaciones subyacente al método de elementos finitos $P_1$ sobre una malla uniforme de $\Omega$ formada por $n=5$ subintervalos del mismo tamaño, $h$.
+
+  \item Calcular el sistema de ecuaciones asociado al método de diferencias finitas centradas sobre la malla anterior y comprobar que coincide con el sistema de ecuaciones para el método de elementos finitos calculado anteriormente.
+  \item Resolver el sistema de ecuaciones usando un entorno informático (Python, Mathematica....) y representar la función resultante.
+\end{enumerate}
+
+
+\paragraph{Ejercicio 1.}
+Consideremos el siguiente problema de Poisson-Dirichlet: hallar $u:\Omega=(0,1)\to\mathbb R$ solución de:
+\begin{equation}
+  \left\{
+    \begin{aligned}
+    - u'' &= f \quad \text{en }\Omega, \\
+    u&=0 \quad \text{sobre }\Gamma_D, 
+  \end{aligned}
+  \right.
+  \label{eq:problema.dirichlet.homogeneo.1d}
+\end{equation}
+donde $f(x)=x(1-x)$.
+\begin{enumerate}
+  \item Determinar la formulación variacional del problema~\eqref{eq:problema.dirichlet.homogeneo.1d} y demostrar, usando el Lema de Lax-Milgram, que existe una única solución.
+  \item Definir la mediante elementos finitos del problema~\eqref{eq:problema.dirichlet.homogeneo.1d}. Escribir el sistema de ecuaciones subyacente al método de elementos finitos $P_1$ sobre una malla uniforme de $\Omega$ formada por $n=5$ subintervalos del mismo tamaño, $h$.
+  \item Calcular el sistema de ecuaciones asociado al método de diferencias finitas centradas sobre la malla anterior y comprobar que coincide con el sistema de ecuaciones para el método de elementos finitos calculado anteriormente.
+  \item Resolver el sistema de ecuaciones usando un entorno informático (Python, Mathematica....) y representar la función resultante.
+\end{enumerate}
+
+
+
+
+\end{document}
