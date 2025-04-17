@@ -15,6 +15,8 @@
 \usepackage{color}
 \usepackage{xspace}
 \usepackage{hyperref}
+\usepackage{tikz}
+
 \hypersetup{
   colorlinks   = true, %Colours links instead of ugly boxes
   urlcolor    = blue, %Colour for external hyperlinks
@@ -37,12 +39,13 @@ Versión: \twodigit{\THEDAY}.\twodigit{\THEMONTH}.\twodigit{\THEYEAR}}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%% Page Setting 
 % \geometry{a4paper}
-\renewcommand{\baselinestretch}{1.05}
+\renewcommand{\baselinestretch}{1.12}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%% Teoremas, etc
 \theoremstyle{plain}
 \newtheorem{theorem}{Teorema}[section]
 \newtheorem{lemma}[theorem]{Lema}
+\newtheorem{proposition}[theorem]{Proposition}
 \newtheorem{corolary}[theorem]{Corolario}
 \newtheorem{remark}[theorem]{Observación}
 
@@ -83,8 +86,11 @@ Versión: \twodigit{\THEDAY}.\twodigit{\THEMONTH}.\twodigit{\THEYEAR}}
 \newcommand{\C}{\ensuremath{\mathbb{C}}}
 
 \newcommand{\xx}{\ensuremath{\mathbf{x}}\xspace}
-\newcommand{\uu}{\ensuremath{\mathbf{u}}\xspace}
-\newcommand{\vv}{\ensuremath{\mathbf {v}}\xspace}
+\newcommand{\uu}{\ensuremath{u}\xspace}
+\newcommand{\vv}{\ensuremath{v}\xspace}
+% vector functions
+\newcommand{\uuu}{\ensuremath{\mathbf{u}}\xspace}
+\newcommand{\vvv}{\ensuremath{\mathbf {v}}\xspace}
 \newcommand{\pp}{\ensuremath{p}\xspace}
 \newcommand{\qq}{\ensuremath{q}\xspace}
 \newcommand{\ff}{\ensuremath{\mathbf{f}}\xspace}
@@ -99,6 +105,7 @@ Versión: \twodigit{\THEDAY}.\twodigit{\THEMONTH}.\twodigit{\THEYEAR}}
 \renewcommand{\div}{\ensuremath{\nabla\cdot}}
 \newcommand{\en}{\quad\text{en}\ }
 \newcommand{\sobre}{\quad\text{sobre}\ }
+\newcommand{\tq}{\ /\ }
 
 \newcommand{\uxx}{\ensuremath{u_{xx}}\xspace}
 \newcommand{\uyy}{\ensuremath{u_{yy}}\xspace}
@@ -107,9 +114,11 @@ Versión: \twodigit{\THEDAY}.\twodigit{\THEMONTH}.\twodigit{\THEYEAR}}
 
 \renewcommand{\P}{\ensuremath{\mathbb{P}}}
 \newcommand{\TestSpace}{\ensuremath{\mathcal{D}}}
+\newcommand{\classC}[1]{\ensuremath{\mathcal{C}^{#1}}}
+\newcommand{\Cont}{\classC{}}
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Title & Author 
-\title{Breve Introducción al Método de los Elementos Finitos para Problemas Elípticos}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% title & author 
+\title{Breve introducción al método de los elementos finitos para problemas elípticos}
 \author{J. Rafael Rodríguez Galván}
 \date{\versiondate\today}
 
@@ -121,44 +130,211 @@ Versión: \twodigit{\THEDAY}.\twodigit{\THEMONTH}.\twodigit{\THEYEAR}}
 %----------------------------------------------------
 
 El objetivo de este documento es la descripción,  de una forma simple pero rigurosa, del \textbf{método de los elementos finitos} para aproximar la solución de este problema.
-A pesar de que este método despliega toda su potencia en la aproximación de problemas bidimensionales%
-\footnote{Para una introducción algo más avanzada, yo habría preferidoabordar directamente el caso bidimensional, como algunos autores de la talla de J. Sayas~\cite{sayas2008gentle}.}, %
-comenzaremos estudiando el caso $d=1$ en la siguiente sección. Más adelante se comprobará cómo los razonamientos son fácilmente generalizables  a $d\geq 2$.
 
-La idea de este método consiste en descomponer el dominio como unión de «elementos» más sencillos (por ejemplo, triángulos en el caso $2$--dimensional o en subintervalos en el caso $1$--dimensional) y aproximar la solución de~\eqref{eq:problema.modelo} mediante funciones continuas que, en cada elemento, son polinomios de un grado, $k$, preestablecido.
+La idea de este método consiste en descomponer el dominio como unión de «elementos» más sencillos (por ejemplo, triángulos en el caso $2$--dimensional o en subintervalos en el caso $1$--dimensional) y aproximar la solución de~\eqref{eq:poisson.dirichlet.homog} mediante funciones continuas que, en cada elemento, son polinomios de un grado, $k$, preestablecido.
 
-En el caso $1$--dimensional y para $k=1$, éstas serán simplemente funciones poligonales. Pero, estas funciones, no son derivables en general. Entonces, ¿en qué sentido podemos decir que verifican~\eqref{eq:problema.modelo}? ¿Qué entendemos por derivada de una función poligonal? La respuesta está en los espacios de funciones derivables en un sentido débil que definiremos en el siguiente apartado.
+En el caso $1$--dimensional y para $k=1$, éstas serán simplemente funciones poligonales. Pero, estas funciones, no son derivables en general. Entonces, ¿en qué sentido podemos decir que verifican~\eqref{eq:poisson.dirichlet.homog}? ¿Qué entendemos por derivada de una función poligonal? La respuesta está en los espacios de funciones derivables en un sentido débil que definiremos en el siguiente apartado.
 
 
 %----------------------------------------------------
 \section{Formulación variacional de problemas elípticos}
 %----------------------------------------------------
-\step
-Sea  $\Omega\subset\R^d$ un dominio abierto y acotado, en la práctica $d\in\{1,2,3\}$, con frontera $\partial\Omega$ suficientemente regular%
-\footnote{Entenderemos que la frontera es regular si es localmente parametrizable por funciones Lipschitzianas, ver por ejemplo~\cite{Ern-Guermond:04}.}.
-En el caso general, dividiremos $\partial\Omega$ en dos partes disjuntas donde impondremos respectivamente condiciones de contorno de tipo Dirichlet y Neumann: $\partial\Omega = \Gamma_D\cup\Gamma_N$,  $\Gamma_D\cap\Gamma_N=\emptyset$.  Podría ser $\Gamma_N=\emptyset$, si no se imponen condiciones Neumann (o $\Gamma_D=\emptyset$ si no hay condiciones Dirichlet).
 
-Consideremos el siguiente problema de Poisson:
+En esta sección nos centraremos en la análisis matemático de problemas formulados en términos de EDP de tipo elíptico. Para ello, se introducirá la llamada \emph{formulación variacional}, que nos permitirá demostrar que, bajo hipótesis bastante generarles, los problemas de contorno para este tipo de EDP están bien planteados, es decir, tienen una única solución que depende continuamente de los datos. Desde el punto de vista del análisis numérico, la formulación variacional nos permitirá definir una familia de esquemas numéricos llamados \emph{métodos de Galerkin}, y en particular el \emph{Método de los Elementos Finitos} (MEF).
+
+
+Como ejemplo de referencia, consideremos el problema de Poisson en $d$ dimensiones
+($d\in\{1,2,3\}$, en la práctica), con condiciones de contorno Dirichlet homogéneas:
 \begin{equation}
 	\left\{
 	\begin{aligned}
-		-\Delta u       & = f \en{\Omega},        \\
-		u               & =g_D \sobre{\Gamma_D},  \\
-		\grad u\cdot\nn & = g_N \sobre{\Gamma_N},
+		-\Delta u & = f \en{\Omega},            \\
+		u         & = 0 \sobre{\partial\Omega}, \\
 	\end{aligned}
 	\right.
-	\label{eq:problema.modelo}
+	\label{eq:poisson.dirichlet.homog}
 \end{equation}
-donde $\Delta u = \partial^ 2 u/\partial x^2 + \partial^ 2 u/\partial y^2$ es el operador laplaciano, $\nn$ denota al vector unitario normal exterior sobre $\partial\Omega$  y las funciones $f:\Omega\to\R$, $g_D:\Gamma_D\to\R$, $g_N:\Gamma_N\to\R$ son datos.
+donde  $\Omega\subset\R^d$ un dominio abierto y acotado suficientemente regular%
+\footnote{Por ejemplo de clase \classC{1}, ver la Definición~\ref{def:dominio.clase.1}.}.
+Más adelante generalizaremos lo anterior a problemas de contorno con condiciones de Dirichlet y de Neumann, no necesariamente homogéneas, así como a otros ejemplos de ecuaciones elípticas.
 
-\step
-Más adelante veremos que, simplemente asumiendo que $f$, $g_D$ y $g_N$ sean funciones de cuadrado integrable, existe una única solución de~\eqref{eq:problema.modelo} en un sentido débil. Y,  si los datos son funciones continuas en sus dominios, ésta es la solución clásica del problema de Poisson-Dirichlet-Neumann anterior, es decir $u\in C^0(\Omega)\cap C^2(\Omega)$ y las igualdades en~\eqref{eq:problema.modelo} se verifican puntualmente, para todo $\xx\in\overline\Omega$.
+Una \textbf{solución clásica} de~\eqref{eq:poisson.dirichlet.homog} es una función $u\in\classC2(\Omega)\cap\classC1(\Omega)$ tal que $-\Delta u(\xx)  = f(\xx)$ para todo $\xx\in\Omega$ y $u(\xx)=0$ para todo $\xx$ de $\partial\Omega$. Si existe una solución clásica, entonces $f\in\Cont(\overline\Omega)$. Pero, en general, no para toda $f\in\Cont(\overline\Omega)$ existe una solución clásica de~\eqref{eq:poisson.dirichlet.homog}~(ver por ejemplo \cite{allaire2007numerical}, capítulo 3).
 
-\step
+El plan en esta sección es el siguiente:
+\begin{itemize}
+	\item En primer lugar, introducimos algunas fórmulas de integración por partes, denominadas fórmulas de Green, que nos permitirán definir la formulación variacional de~\eqref{eq:poisson.dirichlet.homog}.
+	\item A continuación, introducimos  herramienta (el teorema de Lax-Milgram) que nos permitirá demostrar, en última instancia, la existencia de solución para un amplio rango de datos $f$. 
+	\item Pero veremos que este teorema no se puede aplicar directamente, pues para garantizar la existencia de soluciones es necesario ampliar espacio de funciones $\classC1(\Omega)$. A esto se dedicará el siguiente capítulo.
+\end{itemize}
+
+\subsection{Integración por partes y formulación variacional}
+
+\begin{definition}
+	\label{def:dominio.clase.1}
+	Diremos que $\Omega$ es un \textbf{dominio de clase} $\classC 1$ si su frontera es unión de un número finito de curvas parametrizables por funciones de clase $\classC 1$ (derivables y con derivada continua).
+\end{definition}
+Por ejemplo, el interior de un intervalo, de una elipse o de un poliedro son ejemplos de dominios abiertos de clase $\classC 1$ en $\R$, $\R^2$ y $\R^3$, respectivamente.
+Este será el tipo de dominios que consideraremos en los siguientes apartados%
+\footnote{Aunque podrían generalizarse a dominios menos regulares, por ejemplo localmente parametrizables por funciones Lipschitzianas, ver por ejemplo~\cite{Ern-Guermond:04}.}.
+Para dominios de clase $\classC 1$, está bien definido el \textbf{vector normal} exterior y unitario, $\nn=\nn(\xx)$, para todo $\xx\in\partial\Omega$ (salvo, eventualmente, en un número finito de puntos).
+\begin{center}
+	\begin{tikzpicture}
+		\draw[gray, ultra thick, fill=black!05!white] (-2.5,0)
+		to [out=30,in=150]  (2.5,0)
+		to [out=210,in=330] (-2.5,0);
+		%
+		\draw[<-, ultra thick] (0,1.25) -- (0,0.7);
+		\node at (0,0) {\large $\Omega$};
+		\node at (0.3,0.95) {$\nn$};
+	\end{tikzpicture}
+\end{center}
+
+\subsubsection*{Fórmulas de integración por partes}
+
+El siguiente resultado es la base de la que se derivan todas las fórmulas de integración:
+\begin{lemma}
+	Sea $\Omega$ un dominio de clase $\classC 1$ y sea $w\in \classC 1(\overline\Omega)$. Entonces, para todo $i\in \{1,\dots,d\}$:
+	\begin{equation}
+		\label{eq:partes.1}
+		\int_\Omega \partial_{x_i} w(\xx) \, d\xx =
+		\int_{\partial\Omega} w(\xx)\,n_i(\xx) \, ds,
+	\end{equation}
+	siendo $n_i$ la $i$--ésima componente del vector normal, $\nn(x)$.
+\end{lemma}
+Puede encontrarse una demostración de este resultado en~\cite{sayas2019variational}, entre otras referencias.
+Por ejemplo, si $\Omega$ es un intervalo abierto $(a,b)\subset\R$, entonces el vector normal exterior y unitario está definido por $\nn(a)=-1$ y $\nn(b)=1$ y
+$$
+	\int_a^b \partial_{x} w(x) \, dx =
+	\big[ w(x) \big]_{a}^b = - w(a) + w(b) = w(a)\, n(a) + w(b)\, n(b) =
+	\int_{\partial\Omega} w(x)\,n(x) \, ds.
+$$
+Así se tiene fórmula de integración por partes más conocida:
+\begin{corolary}
+	Sea $\Omega$ un dominio de clase $\classC 1$ y sean $u, v\in \classC 1(\overline\Omega)$. Entonces, para todo $i\in \{1,\dots,d\}$:
+	\begin{equation}
+		\label{eq:partes.2}
+		\int_\Omega u(\xx)\cdot \partial_{x_i}v(\xx) \, d\xx =
+		- \int_\Omega \partial_{x_i}u(\xx)\cdot v(\xx) \, d\xx
+		+ \int_{\partial\Omega} u(\xx)v(\xx)\,n_i \, ds.
+	\end{equation}
+\end{corolary}
+\begin{proof}
+	Es suficiente tomar $w=u\,v$ en~\eqref{eq:partes.1}.
+\end{proof}
+% Sea ahora $\ff=(f_1,\dots,f_d)\in C^1(\overline\Omega; \R^d)$ y sea $\div \ff = \partial_{x_1} f_1 + \cdots + \partial_{x_d} f_d$ la \deff{divergencia} de $\ff$. Sumando la ecuación \eqref{eq:partes.1} para $i=1,\dots,d$, se tiene el teorema de la divergencia:
+% \[
+%   \int_\Omega \div\ff (\xx) \,\dx = 
+%   \int_{\partial\Omega} \ff(\xx)\cdot\nn \, dS.
+% \]
+Y de forma análoga, se tiene las siguiente fórmula para el operador laplaciano:
+\begin{corolary}[Fórmula de Green]
+	Dados $\Omega$ (un dominio de clase $\classC 1$), $u \in \classC2(\overline\Omega)$ y $v\in\classC1(\overline\Omega)$:
+	\begin{equation}
+		\label{eq:green}
+		\int_\Omega \Delta u(\xx)\, v(\xx) \, d\xx =
+		- \int_\Omega \nabla u(\xx)\, \nabla v(\xx) \, d\xx
+		+ \int_{\partial\Omega} (\nabla u(\xx)\cdot\nn)\, v(\xx)  \, ds.
+	\end{equation}
+\end{corolary}
+\begin{proof}
+	Basta aplicar~\eqref{eq:partes.1} para $w=\partial_{x_i} u \cdot v$ y sumar el resultado para $i=1,\dots, d$.
+\end{proof}
+
+\begin{exercise}
+	Demostrar usando~\eqref{eq:partes.1} que si $\Omega$ es un dominio de clase $\classC 1$,  $\uuu\in \left[\classC1(\overline\Omega)\right]^d$ y $v\in\classC1(\overline\Omega)$, entonces se verifica la siguiente relación, conocida como \emph{formula de Stokes}:
+	$$
+	\int_\Omega \nabla\cdot \uuu(\xx)\; v(\xx) \, d\xx =
+	- \int_\Omega \uuu(\xx)\cdot \nabla v(\xx) \, d\xx
+	+ \int_{\partial\Omega} (\uuu(\xx)\cdot\nn(\xx))\, v(\xx)  \, ds,
+	$$
+	donde $\nabla\cdot\uuu(x)=\partial_{x_1} u_1(\xx) + \cdots + \partial_{x_d} u_d(\xx)$ es la divergencia del vector $\uu$.
+\end{exercise}
+
+\subsubsection*{Formulación variacional}
+ 
+Supongamos que $u$ es una solución clásica de~\eqref{eq:poisson.dirichlet.homog}. Para poder aplicar la fórmula de Green, supondremos que $u\in\classC2(\overline\Omega)$ (no solamente $\classC2(\Omega)$). Definimos el siguiente espacio vectorial de funciones derivables que verifican la condición Dirichlet homogénea:
+\[
+  X=\big\{ 
+    v\in\classC{1}(\overline\Omega) \tq v(\xx)=0 \text{ para todo } \xx\in\partial\Omega
+  \big\}.
+\]
+Llamaremos \textbf{función test} a toda $v\in X$. La formulación variacional del problema~\eqref{eq:poisson.dirichlet.homog} se obtiene multiplicando por funciones test e integrando por partes de la siguiente forma. Si $\uu$ es una solución de~\eqref{eq:poisson.dirichlet.homog}, suponiendo regularidad $\uu\in\classC2(\overline\Omega)$, y $\vv\in X$ es una función test, aplicando la fórmula de Green~\eqref{eq:green} se tiene que
+\begin{equation}
+  \label{eq:poisson.dirichlet.homog.variational.2}
+  \int_\Omega (-\Delta\uu)\,\vv \, d\xx = 
+  \int_\Omega \nabla\uu\, \nabla\vv \, d\xx - 
+  \int_{\partial\Omega} (\nabla\uu\cdot\nn)\,\vv \, ds = 
+  \int_\Omega \nabla\uu\, \nabla\vv \, d\xx,
+\end{equation}
+pues $\vv=0$ sobre $\partial\Omega$. Usando $-\Delta\uu=f$ en la primera integral de~\eqref{eq:poisson.dirichlet.homog.variational.2}, se tiene que toda solución clásica $\uu$ de~\eqref{eq:poisson.dirichlet.homog} es solución del sieguiente problema:
+\begin{equation}
+  \label{eq:poisson.dirichlet.homog.variational}
+  \text{Hallar } \uu \in X \text{ tal que } \int_\Omega\nabla\uu \, \nabla\vv \, d\xx = \int_\Omega f\, \vv \, d\xx \quad\forall\vv\in X. 
+\end{equation}
+\begin{definition}
+  A la expresión~\eqref{eq:poisson.dirichlet.homog.variational} se la llama \textbf{formulación variacional} de~\eqref{eq:poisson.dirichlet.homog}. A toda solución de~\eqref{eq:poisson.dirichlet.homog.variational} se la llama \textbf{solución variacional} de~\eqref{eq:poisson.dirichlet.homog}.
+\end{definition}
+
+Como se puede observar en~\eqref{eq:poisson.dirichlet.homog.variational}, para que una función $\uu$ sea solución de la formulación variacional solamente es necesario que $u\in\classC1(\overline\Omega)$. Por tanto, para ella estamos debilitando o reduciendo la condición de regularidad  $u\in\classC2(\Omega)$ exigida a la solución clásica. En este sentido, a la solución variacional se la conoce también como \textbf{solución débil}. Puesto que la solución variacional está sujeta a menos restricciones de regularidad, podríamos esperar que sea más fácil resolver~\eqref{eq:poisson.dirichlet.homog.variational} que calcular una solución clásica de~\eqref{eq:poisson.dirichlet.homog}. En todo caso, el siguiente resultado establece que ambas nociones son equivalentes para funciones suficientemente regulares.
+\begin{proposition} Supongamos que $\uu\in\classC2(\overline\Omega)$. Entonces $\uu$ es solución clásica de~\eqref{eq:poisson.dirichlet.homog} si y solo si $\uu$ es solución de~\eqref{eq:poisson.dirichlet.homog.variational}. 
+\end{proposition}
+  
+\begin{proof}
+
+  En los párrafos anteriores hemos demostrado que toda solución clásica $\uu$ tal que $u\in\classC2(\overline\Omega)$ es solución de $\eqref{eq:poisson.dirichlet.homog.variational}$. Para demostrar el segundo punto, partimos de $\uu\in X$ solución de~\eqref{eq:poisson.dirichlet.homog.variational}.  Asumiendo $u\in\classC2(\overline\Omega)$ podemos aplicar la fórmula de Green y, usando que $\vv=0$ sobre $\partial\Omega$, llegamos a que
+  \[
+ \int_\Omega f\, \vv \, d\xx =
+  \int_\Omega \nabla\uu\, \nabla\vv \, d\xx - 
+  \int_{\partial\Omega} (\nabla\uu\cdot\nn)\,\vv \, ds = 
+  \int_\Omega (-\Delta\uu)\,\vv \, d\xx \quad\forall\vv\in X.
+  \]
+  Luego 
+  \[
+    \int_\Omega \big(\Delta \uu + f\big)\, \vv \, d\xx = 0 \quad\forall\vv\in X.
+  \]
+  Aplicando el lema~\ref{lemma:1} a la función $g(\xx) = \Delta \uu(\xx) + f(\xx)$ obtenemos que $-\Delta\uu(\xx) = f(\xx)$ para todo $\xx\in\Omega$. Además, como $\uu\in X$, $\uu(\xx)=0$ para todo $\xx\in\partial\Omega$. Por tanto, $\uu$ es solución clásica de~\eqref{eq:poisson.dirichlet.homog}.
+\end{proof}
+
+Antes la demostración del siguiente lema, introducimos la noción de soporte de una función:
+\begin{definition}
+Definimos el \deff{soporte} de una función $\varphi:\Omega\subset\R^d\to\R $ como el conjunto
+\[
+  \mathop{\rm sop}(\varphi) = \overline{\{\xx\in\Omega \ /\ \varphi(\xx)\neq 0\}},
+\]
+donde, para un conjunto $A$ cualquiera, $\overline A$ denota a su clausura en $\R^d$. 
+\end{definition}
+
+Es conveniente observar que toda función se anula para puntos de $\Omega$ fuera de su soporte.
+
+
+\begin{lemma}
+  \label{lemma:1}
+  Sea $\Omega$ un abierto de $\R^d$ y $g$ una función continua sobre $\Omega$. Si
+  \begin{equation}
+    \label{eq:lemma.1}
+    \int_\Omega g(\xx)\,\phi(\xx) d\xx = 0 \quad\forall\phi\in C^1(\Omega),
+  \end{equation}
+  entonces $g(\xx)=0$ para todo $\xx\in\Omega$.
+\end{lemma}
+
+\begin{proof}
+  Supongamos que existe $x_0\in\Omega$ tal que $g(x_0)\neq 0$. Por ejemplo, supongamos que $g(x_0) > 0$ (en caso contrario, tomamos $-g$). Por continuidad, existe un entorno abierto $\omega\subset\Omega$, tal que $x_0\in\omega$ y $g(\xx)>0$ para todo $\xx$ de $\omega$. Sea $\phi\in\classC1(\Omega)$ una función positiva cuyo soporte está contenido en $\omega$. Entonces 
+  \[
+    \int_\Omega g(\xx)\,\phi(\xx) d\xx =
+    \int_\omega g(\xx)\,\phi(\xx) d\xx > 0, 
+  \] 
+  lo que contradice a~\eqref{eq:lemma.1}.
+
+\end{proof}
+
+
+
+% ---
 
 
 \bibliographystyle{unsrt}
 \bibliography{apuntes-MEF}
 \end{document}
+
 
 
