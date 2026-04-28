@@ -1,7 +1,7 @@
 % !TEX root = apuntes-MEF.tex
 % !TEX spellcheck = es
 
-\documentclass[11pt]{article}
+\documentclass[11pt]{report}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%% Using Packages
 \usepackage[spanish]{babel}
@@ -16,6 +16,7 @@
 \usepackage{xspace}
 \usepackage{hyperref}
 \usepackage{tikz}
+\usepackage{ifthen}
 
 \hypersetup{
   colorlinks   = true, %Colours links instead of ugly boxes
@@ -43,17 +44,29 @@ Versión: \twodigit{\THEDAY}.\twodigit{\THEMONTH}.\twodigit{\THEYEAR}}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%% Teoremas, etc
 \theoremstyle{plain}
-\newtheorem{theorem}{Teorema}[section]
+\newtheorem{theorem}{Teorema}[chapter]
 \newtheorem{lemma}[theorem]{Lema}
-\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{proposition}[theorem]{Proposición}
 \newtheorem{corolary}[theorem]{Corolario}
 \newtheorem{remark}[theorem]{Observación}
 
+\newtheorem{example}[theorem]{Ejemplo}
+\newtheorem{xexample}[theorem]{Ejemplos}
+\newenvironment{examples}%
+  {\begin{xexample}~\begin{enumerate}}{\end{enumerate}\end{xexample}}
+
 \theoremstyle{definition}
 \newtheorem{definition}[theorem]{Definición}
-\newtheorem*{example}{Ejemplo}
-\newtheorem*{exercise}{Ejercicio}
 \newtheorem*{properties}{Propiedades}
+
+\newcounter{exercise}
+\newenvironment{exercise}[1][Ejercicio]{%
+    \refstepcounter{exercise}%
+    \par\medskip
+    \noindent\textbf{#1~\theexercise.}\quad
+}{%
+    \medskip
+}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%% Define some useful colors 
 \definecolor{ocre}{RGB}{243,102,25}
@@ -110,12 +123,26 @@ Versión: \twodigit{\THEDAY}.\twodigit{\THEMONTH}.\twodigit{\THEYEAR}}
 \newcommand{\uxx}{\ensuremath{u_{xx}}\xspace}
 \newcommand{\uyy}{\ensuremath{u_{yy}}\xspace}
 
-\newcommand{\norm}[2][]{\ensuremath{\|#2\|_{#1}}}
+\newcommand{\abs}[1]{\ensuremath{|#1|}}
+\newcommand{\norm}[1]{\ensuremath{\|#1\|}}
+\newcommand{\inner}[2]{\ensuremath{\left(#1,#2\right)}}
 
+\newcommand{\Th}{\ensuremath{\mathcal{T}_h}\xspace}
 \renewcommand{\P}{\ensuremath{\mathbb{P}}}
 \newcommand{\TestSpace}{\ensuremath{\mathcal{D}}}
-\newcommand{\classC}[1]{\ensuremath{\mathcal{C}^{#1}}}
-\newcommand{\Cont}{\classC{}}
+% \newcommand{\classC}[1]{\mathcal{C}^{#1}}}
+\newcommand{\classC}[2]{%
+  \ensuremath{
+   \ifthenelse{\equal{#2}{}}
+    {\mathcal{C}^{#1}}
+    {\mathcal{C}^{#1}(#2)}
+  }
+}
+
+\newcommand{\Cont}[1]{\classC{}{#1}}
+\newcommand{\Linear}[2]{\ensuremath{\mathcal}{L}(#1,#2)}
+\newcommand{\Matrix}[2]{\ensuremath{\mathcal}{M}_{#1\times#2}}
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% title & author 
 \title{Breve introducción al método de los elementos finitos para problemas elípticos}
@@ -126,7 +153,7 @@ Versión: \twodigit{\THEDAY}.\twodigit{\THEMONTH}.\twodigit{\THEYEAR}}
 \maketitle
 
 %----------------------------------------------------
-\section{Introducción}
+\chapter{Introducción}
 %----------------------------------------------------
 
 El objetivo de este documento es la descripción,  de una forma simple pero rigurosa, del \textbf{método de los elementos finitos} para aproximar la solución de este problema.
@@ -137,14 +164,14 @@ En el caso $1$--dimensional y para $k=1$, éstas serán simplemente funciones po
 
 
 %----------------------------------------------------
-\section{Formulación variacional de problemas elípticos}
+\chapter{Formulación variacional del problema Poisson-Dirichlet}
 %----------------------------------------------------
 
 En esta sección nos centraremos en la análisis matemático de problemas formulados en términos de EDP de tipo elíptico. Para ello, se introducirá la llamada \emph{formulación variacional}, que nos permitirá demostrar que, bajo hipótesis bastante generarles, los problemas de contorno para este tipo de EDP están bien planteados, es decir, tienen una única solución que depende continuamente de los datos. Desde el punto de vista del análisis numérico, la formulación variacional nos permitirá definir una familia de esquemas numéricos llamados \emph{métodos de Galerkin}, y en particular el \emph{Método de los Elementos Finitos} (MEF).
 
 
 Como ejemplo de referencia, consideremos el problema de Poisson en $d$ dimensiones
-($d\in\{1,2,3\}$, en la práctica), con condiciones de contorno Dirichlet homogéneas:
+($d\in\{1,2,3\}$, en la práctica), con \textbf{condiciones de contorno Dirichlet homogéneas}:
 \begin{equation}
 	\left\{
 	\begin{aligned}
@@ -155,28 +182,29 @@ Como ejemplo de referencia, consideremos el problema de Poisson en $d$ dimension
 	\label{eq:poisson.dirichlet.homog}
 \end{equation}
 donde  $\Omega\subset\R^d$ un dominio abierto y acotado suficientemente regular%
-\footnote{Por ejemplo de clase \classC{1}, ver la Definición~\ref{def:dominio.clase.1}.}.
+\footnote{Por ejemplo de clase \classC{1}{}, ver la Definición~\ref{def:dominio.clase.1}.}.
 Más adelante generalizaremos lo anterior a problemas de contorno con condiciones de Dirichlet y de Neumann, no necesariamente homogéneas, así como a otros ejemplos de ecuaciones elípticas.
 
-Una \textbf{solución clásica} de~\eqref{eq:poisson.dirichlet.homog} es una función $u\in\classC2(\Omega)\cap\classC1(\Omega)$ tal que $-\Delta u(\xx)  = f(\xx)$ para todo $\xx\in\Omega$ y $u(\xx)=0$ para todo $\xx$ de $\partial\Omega$. Si existe una solución clásica, entonces $f\in\Cont(\overline\Omega)$. Pero, en general, no para toda $f\in\Cont(\overline\Omega)$ existe una solución clásica de~\eqref{eq:poisson.dirichlet.homog}~(ver por ejemplo \cite{allaire2007numerical}, capítulo 3).
+Una \textbf{solución clásica} de~\eqref{eq:poisson.dirichlet.homog} es una función $u\in\classC2\Omega \cap \classC0{\overline\Omega
+}$ tal que $-\Delta u(\xx)  = f(\xx)$ para todo $\xx\in\Omega$ y $u(\xx)=0$ para todo $\xx$ de $\partial\Omega$. Si existe una solución clásica, entonces $f\in\Cont{\overline\Omega}$. Pero, en general, no para toda $f\in\Cont{\overline\Omega}$ existe una solución clásica de~\eqref{eq:poisson.dirichlet.homog}~(ver por ejemplo \cite{allaire2007numerical}, capítulo 3).
 
 El plan en esta sección es el siguiente:
 \begin{itemize}
 	\item En primer lugar, introducimos algunas fórmulas de integración por partes, denominadas fórmulas de Green, que nos permitirán definir la formulación variacional de~\eqref{eq:poisson.dirichlet.homog}.
 	\item A continuación, introducimos  herramienta (el teorema de Lax-Milgram) que nos permitirá demostrar, en última instancia, la existencia de solución para un amplio rango de datos $f$. 
-	\item Pero veremos que este teorema no se puede aplicar directamente, pues para garantizar la existencia de soluciones es necesario ampliar espacio de funciones $\classC1(\Omega)$. A esto se dedicará el siguiente capítulo.
+	\item Pero veremos que este teorema no se puede aplicar directamente, pues para garantizar la existencia de soluciones es necesario ampliar espacio de funciones $\classC1\Omega$. A esto se dedicará el siguiente capítulo.
 \end{itemize}
 
-\subsection{Integración por partes y formulación variacional}
+\section{Integración por partes y formulación variacional}
 
 \begin{definition}
 	\label{def:dominio.clase.1}
-	Diremos que $\Omega$ es un \textbf{dominio de clase} $\classC 1$ si su frontera es unión de un número finito de curvas parametrizables por funciones de clase $\classC 1$ (derivables y con derivada continua).
+  Diremos que $\Omega$ es un \textbf{dominio de clase} $\classC1{}$ si su frontera es unión de un número finito de curvas parametrizables por funciones de clase $\classC1{}$ (derivables y con derivada continua).
 \end{definition}
-Por ejemplo, el interior de un intervalo, de una elipse o de un poliedro son ejemplos de dominios abiertos de clase $\classC 1$ en $\R$, $\R^2$ y $\R^3$, respectivamente.
+Por ejemplo, el interior de un intervalo, de una elipse o de un poliedro son ejemplos de dominios abiertos de clase $\classC1{}$ en $\R$, $\R^2$ y $\R^3$, respectivamente.
 Este será el tipo de dominios que consideraremos en los siguientes apartados%
 \footnote{Aunque podrían generalizarse a dominios menos regulares, por ejemplo localmente parametrizables por funciones Lipschitzianas, ver por ejemplo~\cite{Ern-Guermond:04}.}.
-Para dominios de clase $\classC 1$, está bien definido el \textbf{vector normal} exterior y unitario, $\nn=\nn(\xx)$, para todo $\xx\in\partial\Omega$ (salvo, eventualmente, en un número finito de puntos).
+Para dominios de clase $\classC1{}$, está bien definido el \textbf{vector normal} exterior y unitario, $\nn=\nn(\xx)$, para todo $\xx\in\partial\Omega$ (salvo, eventualmente, en un número finito de puntos).
 \begin{center}
 	\begin{tikzpicture}
 		\draw[gray, ultra thick, fill=black!05!white] (-2.5,0)
@@ -189,11 +217,11 @@ Para dominios de clase $\classC 1$, está bien definido el \textbf{vector normal
 	\end{tikzpicture}
 \end{center}
 
-\subsubsection*{Fórmulas de integración por partes}
+\subsection{Fórmulas de integración por partes}
 
 El siguiente resultado es la base de la que se derivan todas las fórmulas de integración:
 \begin{lemma}
-	Sea $\Omega$ un dominio de clase $\classC 1$ y sea $w\in \classC 1(\overline\Omega)$. Entonces, para todo $i\in \{1,\dots,d\}$:
+  Sea $\Omega$ un dominio de clase $\classC1{}$ y sea $w\in \classC1{\overline\Omega}$. Entonces, para todo $i\in \{1,\dots,d\}$:
 	\begin{equation}
 		\label{eq:partes.1}
 		\int_\Omega \partial_{x_i} w(\xx) \, d\xx =
@@ -210,7 +238,7 @@ $$
 $$
 Así se tiene fórmula de integración por partes más conocida:
 \begin{corolary}
-	Sea $\Omega$ un dominio de clase $\classC 1$ y sean $u, v\in \classC 1(\overline\Omega)$. Entonces, para todo $i\in \{1,\dots,d\}$:
+  Sea $\Omega$ un dominio de clase $\classC1{}$ y sean $u, v\in \classC1{\overline\Omega}$. Entonces, para todo $i\in \{1,\dots,d\}$:
 	\begin{equation}
 		\label{eq:partes.2}
 		\int_\Omega u(\xx)\cdot \partial_{x_i}v(\xx) \, d\xx =
@@ -228,7 +256,7 @@ Así se tiene fórmula de integración por partes más conocida:
 % \]
 Y de forma análoga, se tiene las siguiente fórmula para el operador laplaciano:
 \begin{corolary}[Fórmula de Green]
-	Dados $\Omega$ (un dominio de clase $\classC 1$), $u \in \classC2(\overline\Omega)$ y $v\in\classC1(\overline\Omega)$:
+  Dados $\Omega$ (un dominio de clase $\classC1{}$), $u \in \classC2{\overline\Omega}$ y $v\in\classC1{\overline\Omega}$:
 	\begin{equation}
 		\label{eq:green}
 		\int_\Omega \Delta u(\xx)\, v(\xx) \, d\xx =
@@ -240,25 +268,17 @@ Y de forma análoga, se tiene las siguiente fórmula para el operador laplaciano
 	Basta aplicar~\eqref{eq:partes.1} para $w=\partial_{x_i} u \cdot v$ y sumar el resultado para $i=1,\dots, d$.
 \end{proof}
 
-\begin{exercise}
-	Demostrar usando~\eqref{eq:partes.1} que si $\Omega$ es un dominio de clase $\classC 1$,  $\uuu\in \left[\classC1(\overline\Omega)\right]^d$ y $v\in\classC1(\overline\Omega)$, entonces se verifica la siguiente relación, conocida como \emph{formula de Stokes}:
-	$$
-	\int_\Omega \nabla\cdot \uuu(\xx)\; v(\xx) \, d\xx =
-	- \int_\Omega \uuu(\xx)\cdot \nabla v(\xx) \, d\xx
-	+ \int_{\partial\Omega} (\uuu(\xx)\cdot\nn(\xx))\, v(\xx)  \, ds,
-	$$
-	donde $\nabla\cdot\uuu(x)=\partial_{x_1} u_1(\xx) + \cdots + \partial_{x_d} u_d(\xx)$ es la divergencia del vector $\uu$.
-\end{exercise}
 
-\subsubsection*{Formulación variacional}
+\subsection{Formulación variacional}
  
-Supongamos que $u$ es una solución clásica de~\eqref{eq:poisson.dirichlet.homog}. Para poder aplicar la fórmula de Green, supondremos que $u\in\classC2(\overline\Omega)$ (no solamente $\classC2(\Omega)$). Definimos el siguiente espacio vectorial de funciones derivables que verifican la condición Dirichlet homogénea:
-\[
+Supongamos que $u$ es una solución clásica de~\eqref{eq:poisson.dirichlet.homog}. Para poder aplicar la fórmula de Green, supondremos que $u\in\classC2{\overline\Omega}$ (no solamente $\classC2\Omega)$). Definimos el siguiente espacio vectorial de funciones derivables que verifican la condición Dirichlet homogénea:
+\begin{equation}
+  \label{eq:poisson.dirichlet.homog.espacio.X}
   X=\big\{ 
-    v\in\classC{1}(\overline\Omega) \tq v(\xx)=0 \text{ para todo } \xx\in\partial\Omega
+    v\in\classC{1}{\overline\Omega} \tq v(\xx)=0 \text{ para todo } \xx\in\partial\Omega
   \big\}.
-\]
-Llamaremos \textbf{función test} a toda $v\in X$. La formulación variacional del problema~\eqref{eq:poisson.dirichlet.homog} se obtiene multiplicando por funciones test e integrando por partes de la siguiente forma. Si $\uu$ es una solución de~\eqref{eq:poisson.dirichlet.homog}, suponiendo regularidad $\uu\in\classC2(\overline\Omega)$, y $\vv\in X$ es una función test, aplicando la fórmula de Green~\eqref{eq:green} se tiene que
+\end{equation}
+Llamaremos \textbf{función test} a toda $v\in X$. La formulación variacional del problema~\eqref{eq:poisson.dirichlet.homog} se obtiene multiplicando por funciones test e integrando por partes de la siguiente forma. Si $\uu$ es una solución de~\eqref{eq:poisson.dirichlet.homog}, suponiendo regularidad $\uu\in\classC2{\overline\Omega}$, y $\vv\in X$ es una función test, aplicando la fórmula de Green~\eqref{eq:green} se tiene que
 \begin{equation}
   \label{eq:poisson.dirichlet.homog.variational.2}
   \int_\Omega (-\Delta\uu)\,\vv \, d\xx = 
@@ -275,13 +295,18 @@ pues $\vv=0$ sobre $\partial\Omega$. Usando $-\Delta\uu=f$ en la primera integra
   A la expresión~\eqref{eq:poisson.dirichlet.homog.variational} se la llama \textbf{formulación variacional} de~\eqref{eq:poisson.dirichlet.homog}. A toda solución de~\eqref{eq:poisson.dirichlet.homog.variational} se la llama \textbf{solución variacional} de~\eqref{eq:poisson.dirichlet.homog}.
 \end{definition}
 
-Como se puede observar en~\eqref{eq:poisson.dirichlet.homog.variational}, para que una función $\uu$ sea solución de la formulación variacional solamente es necesario que $u\in\classC1(\overline\Omega)$. Por tanto, para ella estamos debilitando o reduciendo la condición de regularidad  $u\in\classC2(\Omega)$ exigida a la solución clásica. En este sentido, a la solución variacional se la conoce también como \textbf{solución débil}. Puesto que la solución variacional está sujeta a menos restricciones de regularidad, podríamos esperar que sea más fácil resolver~\eqref{eq:poisson.dirichlet.homog.variational} que calcular una solución clásica de~\eqref{eq:poisson.dirichlet.homog}. En todo caso, el siguiente resultado establece que ambas nociones son equivalentes para funciones suficientemente regulares.
-\begin{proposition} Supongamos que $\uu\in\classC2(\overline\Omega)$. Entonces $\uu$ es solución clásica de~\eqref{eq:poisson.dirichlet.homog} si y solo si $\uu$ es solución de~\eqref{eq:poisson.dirichlet.homog.variational}. 
+Si definimos $a(u,v) = \int_\Omega\nabla u \, \nabla v \, d\xx$ y $L(v) = \int_\Omega f\, v \, d\xx$, entonces la formulación variacional~\eqref{eq:poisson.dirichlet.homog.variational} se puede escribir de la siguiente manera más general:
+\begin{displaymath}
+  \text{Hallar } \uu \in X \text{ tal que } a(\uu,\vv) = L(\vv) \quad\forall\vv\in X. 
+\end{displaymath}
+
+Como se puede observar en~\eqref{eq:poisson.dirichlet.homog.variational}, para que una función $\uu$ sea solución de la formulación variacional para el problema de Laplace-Dirichlet~\eqref{eq:poisson.dirichlet.homog} solamente es necesario que $u\in\classC1{\overline\Omega}$. Por tanto, para ella estamos debilitando o reduciendo la condición de regularidad  $u\in\classC2\Omega$ exigida a la solución clásica. En este sentido, a la solución variacional se la conoce también como \textbf{solución débil}. Puesto que la solución variacional está sujeta a menos restricciones de regularidad, podríamos esperar que sea más fácil resolver~\eqref{eq:poisson.dirichlet.homog.variational} que calcular una solución clásica de~\eqref{eq:poisson.dirichlet.homog}. En todo caso, el siguiente resultado establece que ambas nociones son equivalentes para funciones suficientemente regulares.
+\begin{proposition} Supongamos que $\uu\in\classC2{\overline\Omega}$. Entonces $\uu$ es solución clásica de~\eqref{eq:poisson.dirichlet.homog} si y solo si $\uu$ es solución de~\eqref{eq:poisson.dirichlet.homog.variational}. 
 \end{proposition}
   
 \begin{proof}
 
-  En los párrafos anteriores hemos demostrado que toda solución clásica $\uu$ tal que $u\in\classC2(\overline\Omega)$ es solución de $\eqref{eq:poisson.dirichlet.homog.variational}$. Para demostrar el segundo punto, partimos de $\uu\in X$ solución de~\eqref{eq:poisson.dirichlet.homog.variational}.  Asumiendo $u\in\classC2(\overline\Omega)$ podemos aplicar la fórmula de Green y, usando que $\vv=0$ sobre $\partial\Omega$, llegamos a que
+  En los párrafos anteriores hemos demostrado que toda solución clásica $\uu$ tal que $u\in\classC2{\overline\Omega}$ es solución de $\eqref{eq:poisson.dirichlet.homog.variational}$. Para demostrar el segundo punto, partimos de $\uu\in X$ solución de~\eqref{eq:poisson.dirichlet.homog.variational}.  Asumiendo $u\in\classC2{\overline\Omega}$ podemos aplicar la fórmula de Green y, usando que $\vv=0$ sobre $\partial\Omega$, llegamos a que
   \[
  \int_\Omega f\, \vv \, d\xx =
   \int_\Omega \nabla\uu\, \nabla\vv \, d\xx - 
@@ -318,7 +343,7 @@ Es conveniente observar que toda función se anula para puntos de $\Omega$ fuera
 \end{lemma}
 
 \begin{proof}
-  Supongamos que existe $x_0\in\Omega$ tal que $g(x_0)\neq 0$. Por ejemplo, supongamos que $g(x_0) > 0$ (en caso contrario, tomamos $-g$). Por continuidad, existe un entorno abierto $\omega\subset\Omega$, tal que $x_0\in\omega$ y $g(\xx)>0$ para todo $\xx$ de $\omega$. Sea $\phi\in\classC1(\Omega)$ una función positiva cuyo soporte está contenido en $\omega$. Entonces 
+  Supongamos que existe $x_0\in\Omega$ tal que $g(x_0)\neq 0$. Por ejemplo, supongamos que $g(x_0) > 0$ (en caso contrario, tomamos $-g$). Por continuidad, existe un entorno abierto $\omega\subset\Omega$, tal que $x_0\in\omega$ y $g(\xx)>0$ para todo $\xx$ de $\omega$. Sea $\phi\in\classC1\Omega$ una función positiva cuyo soporte está contenido en $\omega$. Entonces 
   \[
     \int_\Omega g(\xx)\,\phi(\xx) d\xx =
     \int_\omega g(\xx)\,\phi(\xx) d\xx > 0, 
@@ -327,10 +352,590 @@ Es conveniente observar que toda función se anula para puntos de $\Omega$ fuera
 
 \end{proof}
 
+\section{Teorema de Lax-Milgram}
+En esta sección presentaremos el teorema de Lax-Milgram, que nos permitirá demostrar la existencia y unicidad de solución variacional para problemas de contorno elípticos. Esta teoría se basa en el concepto de espacios de Hilbert, que pueden entenderse como la generalización al marco de espacios funcionales infinito-dimensionales de las nociones básicas de espacios euclídeos, incluyendo ideas como ortogonalidad o completitud. Aquí nos limitaremos a plantear el teorema y seguidamente a introducir brevemente las definiciones necesarias para entenderlo. 
+
+Para la demostración es fundamental la completitud topológica del espacio de funciones donde busquemos la solución, en concreto el concepto de espacio de Hilbert. No daremos detalles sobre esto, pero el lector interesado puede profundizar y ampliar detalles en libros sobre análisis funcional como~\cite{evans2010PDE,papageorgiou2018FunctionalAnalysis,stein2011FunctionalAnalysis,brezis:2017}. Véase también el ejercicio~\ref{ex:demo.Lax-Milgram}.
+
+\begin{theorem}
+  \label{th:Lax-Milgram}
+  Sea $V$ un espacio de Hilbert y sean:
+  \begin{itemize}
+    \item $a:V\times V \to\R$ una aplicación bilineal, continua y coercitiva.
+    \item $L:V\to\R$ una aplicación lineal y continua.
+  \end{itemize}
+  Entonces, existe un único $u\in V$ tal que 
+  \begin{equation}
+    \label{eq:formulacion.variational.generica}
+    a(u,v) = L(v) \quad\forall v\in V.
+  \end{equation}
+Además, $u$ depende continuamente de los datos, en el siguiente sentido:
+\begin{equation}
+  \label{eq:continuidad.de.u}
+  \norm{u}_{V} \le 
+  \frac{1}{\alpha} \sup_{v\in V} \frac{\abs{a(u,v)}}{\norm{v}_{V}} = 
+  \frac{1}{\alpha} \sup_{v\in V} \frac{|L(v)|}{\norm{v}_{V}}.
+\end{equation}
+\end{theorem}
+
+El resto de esta sección se destina a presentar los conceptos necesarios para entender el teorema de Lax-Milgram, ilustrados con ejemplos que nos resultarán útiles más adelante.
+
+\begin{definition}
+  Un espacio vectorial normado, $X$, se dice un \textbf{espacio de Banach} si es completo, es decir si toda sucesión de Cauchy $\{u_n\}_{n=1}^\infty\subset X$ es convergente a un límite $u\in X$.
+\end{definition}
+
+\begin{examples}
+  \item Si $\Omega\subset\R^d$ es acotado, el espacio $\Cont{\overline\Omega}=\{\uu:\overline\Omega\to\R \tq u \text{ es continua}\}$ es un espacio de Banach para la norma
+\[
+  \norm{\uu}_{\Cont{\overline\Omega}} = \sup_{\xx\in\overline\Omega}|\uu(\xx)|.
+\]
+\item Sea $\Omega\subset\R^d$ un abierto. Para cualquier multiíndice $\alpha=(\alpha_1,\dots,\alpha_d)\in\big(\N\cup\{0\})^d$, definimos su orden como $|\alpha|=\sum_{i=1}^d \alpha_i$ y definimos la correspondiente derivada (de orden $|\alpha|$) como:
+    \[
+      D^\alpha\uu = \frac{\partial^{|\alpha|}} {\partial x_1^{\alpha_1}\cdots \partial x_d^{\alpha_d}} \uu.
+    \]
+    Para todo $k\in\N\cup\{0\}$ definimos el espacio
+    \begin{align*}
+      \classC{k}\Omega &= \{\uu\in\Cont\Omega \tq D^\alpha\uu\in\Cont\Omega\enspace \forall \alpha: \, |\alpha|\le k \}
+      \intertext{y, si $\Omega$ es acotado,} 
+      \classC{k}{\overline\Omega} &= \{\uu\in\classC{k}\Omega \tq D^\alpha\uu \text{ se puede extender continuamente a }\overline\Omega \enspace \forall \alpha: \, |\alpha|\le k \}.
+    \end{align*}
+    Entonces $\classC{k}{\overline\Omega}$ es un espacio de Banach para la norma
+    \[
+      \norm{\uu}_{\classC{k}{\overline\Omega}} = \sum_{|\alpha|\le k} \norm{D^\alpha\uu}_{\Cont{\overline\Omega}}.
+    \]
+\end{examples}
+
+\begin{definition}
+  Sea $V$ un espacio vectorial.
+ \begin{itemize}
+   \item Una aplicación $\inner\cdot\cdot:V\times V\to\R$ es un \textbf{producto escalar} (o producto interno) sobre $V$ si:
+     \begin{enumerate}
+      \item $\inner\uu\vv=\inner\vv\uu$ para todo $\uu,\vv\in V$.
+      \item Para todo $v\in V$, la aplicación $u\in V \mapsto \inner\uu\vv$ es lineal.
+      \item $\inner\uu\uu\geq 0$ para todo $\uu\in V$ y $\inner\uu\uu=0$ si y solo si $\uu=0$.
+     \end{enumerate}
+   \item Se llama espacio \textbf{pre-Hilbertiano} a todo  espacio vectorial $V$ dotado de un producto interno $\inner\cdot\cdot$. Todo espacio prehilbertiano es un espacio normado para la norma inducida
+     \[
+       \norm{\vv}_{V} = \sqrt{\inner{\vv}{\vv}}.
+     \]
+   \item A un espacio prehilbertiano $V$ se le llama espacio de \textbf{Hilbert} si es completo (es un espacio de Banach) para la norma inducida.
+ \end{itemize} 
+\end{definition}
+
+\begin{examples}
+    \item El espacio finito-dimensional $V=\R^d$ es  un espacio de Hilbert para el producto escalar euclídeo
+    \[
+      \inner{\uuu}{\vvv} = \sum_{i=1}^d \uu_i\vv_i \quad\forall\uuu=(u_1,\dots,u_d),\,\vvv=(v_1,\dots,v_d)\in V.
+    \]
+    Con frecuencia se denota $\uuu\cdot\vvv = \inner{\uuu}{\vvv}$ al producto escalar euclídeo.
+    \item 
+  Si $\Omega\subset\R^d$ es un abierto acotado, el espacio $\Cont{\overline\Omega}$ es un espacio de pre-Hilbertiano para la el producto escalar
+  \begin{equation}
+    \label{eq:Cont.Omega.inner}
+    \inner{\uu}{\vv}_{L^2} = \int_\Omega \uu(\xx)\vv(\xx) d\xx.
+  \end{equation}
+  Sin embargo, $\Cont{\overline\Omega}$ no es un espacio de Hilbert para este producto escalar, pues no es completo para la norma inducida (ejercicio~\ref{ex:Cont.Omega.inner.not.Hilbert}).
+\end{examples}
+
+\begin{proposition}
+ Sea $V$ un espacio pre-Hilbertiano. Entonces se verifica la siguiente desigualdad (de Cauchy-Schwarz):
+\begin{equation}
+  \label{eq:Cauchy.Schwarz}
+  \abs{\inner\uu\vv}\le\norm{\uu}\,\norm{\vv},
+  \quad\forall\uu,\vv\in V.
+\end{equation} 
+\end{proposition}
+
+\begin{definition}
+  Dados dos espacios normados, $V$ y $W$ con respectivas normas $\norm\cdot_V$ y $\norm\cdot_W$, denotamos por $\Linear V W$ al espacio de las aplicaciones $L:V\to W$ que son lineales y continuas. También se les llama acotadas, en el sentido de la proposición~\ref{prop:forma.lineal.acotada}. Si $\vv\in V$, denotamos por $L(\vv)$ o $L\vv$ a la imagen por $L$ de $\vv$.
+\end{definition}
+
+\begin{proposition}
+  \label{prop:forma.lineal.acotada}
+  Si $L$ es una aplicación lineal entre dos espacios normados $V$ y $W$, entonces Las siguientes afirmaciones son equivalentes:
+  \begin{enumerate}
+    \item $L\in\Linear V W$.
+    \item $\exists C>0$ tal que
+      $\norm{L\,\vv}_W \le C\norm{\vv}_V \quad\forall\vv\in V.$
+    \item  $\exists C>0$ tal que $\sup_{\norm{\vv}_V=1}\norm{L\,\vv}_W \le C.$
+  \end{enumerate}
+\end{proposition}
+
+\begin{examples}
+  \label{ex.forma.lineal.continua}
+  \item Si $V=\Cont{\overline\Omega}$ y $W=\R$, para todo $f\in V$, la aplicación 
+    \[
+      L\,\vv = \int_\Omega f(\xx)\vv(\xx) d\xx
+    \]
+    es lineal y continua. Para comprobarlo, es suficiente aplicar la desigualdad de Cauchy-Schwarz y tomar $C=\left(\int_\Omega f^2\right)^{1/2}$ en la Proposición~\ref{prop:forma.lineal.acotada}, apartado 2:
+    \begin{displaymath}
+      \left|\int_\Omega f(\xx)\vv(\xx) d\xx\right| \le \left(\int_\Omega f^2(\xx)\right)^{1/2}\left(\int_\Omega \vv(\xx)^2\right)^{1/2} \le C\norm{\vv}_V.
+    \end{displaymath}
+  \item Si $V=\R^n$ y $W=\R^m$, dotados por ejemplo la norma euclídea (u otra, pues recordemos que en en dimensión finita todas las normas son equivalentes) entonces toda aplicación lineal $L:V\to W$ es continua y (fijadas bases en $V$ y $W$) existe una biyección entre $\Linear V W$ y $\Matrix n m$ (el conjunto de las matrices $n\times m$).
+\end{examples}
 
 
-% ---
+\begin{definition}
+  Llamaremos \textbf{forma bilineal} (y \textbf{continua}) sobre un espacio vectorial $V$ a toda aplicación 
+  $$a(\cdot,\cdot):V \times V\to\R, \quad (u,v)\mapsto a(u,v)$$ 
+  tal que las aplicaciones $a(u,\cdot): v\mapsto a(u,v)$ y $a(\cdot,v): u\mapsto a(u,v)$ son lineales (y continuas).
+\end{definition}
 
+A partir de la proposición~\ref{prop:forma.lineal.acotada}, se deduce que una forma bilineal es continua si y solo si $\exists C>0$ tal que
+\begin{equation}
+  \label{eq:forma.bilineal.continua}
+  \abs{a(u,v)}\le C\,\norm{u}_V\,\norm{v}_V\quad\forall u,v\in V.
+\end{equation}
+
+\begin{definition}
+  Una \textbf{forma bilineal} sobre un espacio vectorial $V$ se dice \textbf{coercitiva} (o uniformemente elíptica) si existe $\alpha>0$ tal que
+  \begin{equation}
+    \abs{a(v,v)}\ge \alpha\norm{v}^2 \quad\forall v\in V.
+  \end{equation}
+\end{definition}
+
+\section{Aplicación al problema de Laplace-Dirichlet}
+
+A continuación, intentaremos aplicar el Teorema de Lax-Milgram~\ref{th:Lax-Milgram} para demostrar que existe solución para la formulación variacional del problema del Laplaciano, que se puede escribir como una formulación variacional genérica~\eqref{eq:formulacion.variational.generica} en para
+\begin{align}
+  \label{eq:forma.bilineal.poisson.dirichlet}
+  a(u,v) &= \int_\Omega \nabla u(\xx) \nabla v(\xx) \,d\xx \quad\text{y} \\
+  \label{eq:forma.lineal.poisson.dirichlet}
+  L(u) &= \int_\Omega f(\xx) u(\xx) d\xx.
+\end{align}
+En este contexto, el espacio $V$ será el espacio de funciones derivables en sentido clásico al que habíamos denominado $X$, ver ~\eqref{eq:poisson.dirichlet.homog.espacio.X}. En este espacio, podemos tomar el producto escalar
+\begin{equation}
+  \label{eq:inner.grad.grad}
+  \inner{\uu}{\vv} = \int_\Omega \grad\uu(\xx)\vv(\xx)\, d\xx,
+\end{equation}
+cuya norma asociada es 
+\begin{displaymath}
+  \norm{\vv}=\left(\int_\Omega \left|\grad\vv(\xx)\right|^2\, d\xx\right)^{1/2}.
+\end{displaymath}
+Es fácil ver que~\eqref{eq:inner.grad.grad} define realmente un producto escalar en el espacio $X$. El único punto delicado es demostrar que si $\vv\in X$ y $\norm{\vv}=0$, entonces $\vv=0$. Pero si
+\begin{displaymath}
+  \norm{\vv}^2=\left(\int_\Omega \left|\grad\vv(\xx)\right|^2\, d\xx\right) = 0,
+\end{displaymath}
+entonces $\grad\vv(\xx)=0$ para todo $\xx\in\Omega$, lo que significa que $\vv$ es constante en $\Omega$ y, como $\vv=0$ en $\partial\Omega$ (por definición de $X$), entonces $\vv=0$ en toda $\Omega$.
+
+Para el producto escalar antes definido, la forma bilineal $a(\uu,\vv)$ definida en~\eqref{eq:forma.bilineal.poisson.dirichlet} es continua pues, usando la desigualdad de Cauchy-Schwarz,
+\begin{displaymath}
+  \abs{a(\uu,\vv)}\le \left(\int_\Omega \left|\grad\uu(\xx)\right|^2\, d\xx\right)^{1/2}\left(\int_\Omega \left|\grad\vv(\xx)\right|^2\, d\xx\right)^{1/2} = \norm{\uu}\,\norm{\vv}\quad\forall\uu,\vv\in X, 
+\end{displaymath}
+por lo tanto se verifica~\eqref{eq:forma.bilineal.continua} con $C=1$.
+Además, gracias a la elección del producto escalar~\eqref{eq:inner.grad.grad}, la forma bilineal antes definida es automáticamente coercitiva con $\alpha=1$. Y por otro lado, $L$ es lineal y continua (ver el ejemplo~\ref{ex.forma.lineal.continua}, apartado 1).
+
+Así, si $V=X$ fuera un espacio de Hilbert, se verificarían todas las hipótesis del Teorema de Lax-Milgram. Pero, por desgracia, este \textbf{no es un espacio de Hilbert}, pues no es completo para la norma inducida por el producto escalar~\eqref{eq:inner.grad.grad}. El motivo es que existen sucesiones de funciones $C^1(\overline\Omega)$ que convergen para esta norma y cuyo límite no es derivable en todo el dominio.
+
+La \textbf{solución} será definir el espacio $V=\overline{X}$, es decir la clausura de $X$ para la topología inducida por el producto escalar~\eqref{eq:inner.grad.grad}. Este espacio se denominará $H^1_0(\Omega)$ y se estudiará con algún detalle en la sección dedicada a espacios de Sobolev.
+
+
+\chapter{El Método de los Elementos Finitos}
+
+Comenzaremos definiendo definir el método de los elementos finitos para el caso 1-di\-men\-sio\-nal del problema de Poisson~\eqref{eq:poisson.dirichlet.homog}, donde $\Omega=(a,b)$. Para ello, partimos de un \deff{mallado del dominio}, esto es de un conjunto de intervalos $I_i=[x_{i-1},x_i]$, $i=1,\dots,n$ (con $n\in\N$) que forman una partición de $\Omega$, es decir $a=x_0<x_1<\cdots<x_n=b$. 
+A los intervalos $I_i$ los llamamos \deff{elementos} o \deff{celdas}. A los puntos $x_i$ los llamamos \deff{vértices}. Al conjunto de celdas y vértices lo llamamos un \deff{mallado} de $\Omega$ y lo denotamos $\mathcal{T}_h(\Omega)$. 
+
+Los elementos de la malla pueden tener un tamaño variable, $h_i=x_{i-1}-x_i$. Al valor $h=\max_{i=1\dots n}(x_i-x_{i-1})$ lo llamamos \deff{talla de la malla}. Por supuesto, si todos los elementos tienen el mismo tamaño será $h=x_i-x_{i-1}$ para todo $i$.
+
+Como veremos, todas estas definiciones se generalizan fácilmente a mallas de dominios de $\R^d$, $d\ge 1$, donde los elemento s estarán formados  por triángulos, rectángulos, tetraedros etc.
+
+Aproximamos el espacio $V=H_0^1(\Omega)$ por el subespacio vectorial
+\[
+  V_h = \left\{ v_h\in C^0(\overline\Omega) \ /\ v|_{[x_{i-1},x_i]}\in\P_m \quad \forall i=1,\dots,n, \quad v(a)=v(b)=0 \right\},
+\]
+siendo $\P_m$ el espacio de los polinomios con coeficientes reales de grado no superior a $m\in\N$. 
+
+
+Sobre este espacio $V_h\subset V$ planteamos el problema:
+\begin{equation}
+  \label{eq:problema.elementos-finitos.1d}
+  \text{Hallar }u_h\in V_h  \enspace\text{tal que} \enspace
+  a(u_h,v_h) = L(v_h) \quad \forall v_h\in V_h.
+\end{equation}
+Veremos que $V_h$ es un espacio finito-dimensional de $V=H_0^1(\Omega)$ y que el problema anterior equivale a resolver un sistema lineal de ecuaciones. Este razonamiento, que se puede extender a subespacios finito-dimensionales más generales que el espacio de elementos finitos $V_h$ antes definido (por ejemplo, permitiendo discontinuidad de los elementos de $V_h$ en algunos vértices), es conocido como \deff{método de Galerkin}.
+
+Comenzaremos centrándonos en el caso  $m=1$, donde las funciones de $V_h$ son funciones poligonales y es muy fácil dar una base de $V_h$. 
+En concreto, definamos para $i\in\{1,\dots,n-1\}$ las funciones
+\[
+  \varphi_i(x) = \left\{
+    \begin{aligned}
+      \frac 1{h_{i}} (x-x_{i-1}) &\quad \text{si } x\in I_{i},
+      \\
+      \frac 1{h_{i+1}} (x_{i+1}-x) &\quad \text{si } x\in I_{i+1},
+      \\
+      0 &\quad \text{en otro caso.}
+    \end{aligned}
+    \right.
+\]
+que por supuesto están en $V_h$. Éstas se llaman «funciones sombrero», debido al aspecto de su gráfica.
+
+\begin{proposition}
+El conjunto $\{\varphi_1,\dots,\varphi_{n-1}\} $ es una base de $V_h$.
+\end{proposition}
+
+\begin{proof}
+  Para ver que este conjunto es linealmente idependientes, sea $(u_1,\dots,u_{n-1})\in\R^{n-1}$ tale que la función $w=\sum_{i=1}^{n-1} u_i \varphi_i$ es identicamente nula. Como por definición $\varphi_i(x_j)=\delta_{ij}$ (delta de Kronecker) entonces, para todo $i$, $w(x_i)=u_i=0$. 
+
+  Para ver que es un sistema generador, basta observar de que toda función $v_h\in V_h$ puede escribirse como $v_h=\sum_{i=1}^{m-1} v_h(x_i)\varphi_i$, pues ambas funciones son afines en cada $I_i$ y toman los mismos valores en los extremos del intervalo.
+\end{proof}
+
+\begin{proposition}
+$V_h\subset H_0^1(\Omega)$
+\end{proposition}
+\begin{proof}
+  Para toda función $v_h$ se puede definir $v_h'$ como la función constenate a trozos cuyo valor en cada intervalo $I_i$ es igual a la pendiente de la función afín $v_h |_{I_i}$. Evidentemente, esta función es de $L_2(\Omega)$
+  Por otra parte, $v_h$ es una función continua y $v_h|_{\partial\Omega}$=0, por lo tanto es de $H_0^1(\Omega)$. 
+\end{proof}
+
+\begin{proposition}
+El problema de elementos finitos~\eqref{eq:problema.elementos-finitos.1d} tiene una única solución.
+\end{proposition}
+\begin{proof}
+  $V_h$ es un espacio finito-dimensional de $V=H_0^1(\Omega)$, por tanto un subespacio cerrado. Por tanto, $V_h$ es también un espacio de Hilbert para el producto escalar de $H_0^1(\Omega)$ y su norma asociada.
+
+Puesto que, para esta norma, $a(\cdot,\cdot)$ es bilineal, continua y coercitiva y $L(\cdot)$ es lineal y continua, podemos aplidar el teorema de Lax-Milgram.
+\end{proof}
+
+
+\begin{proposition}
+El problema de elementos finitos~\eqref{eq:problema.elementos-finitos.1d} es equivalente a un sistema de ecuaciones lineales $AU=B$ donde
+\[
+  A_{ij}=a(\varphi_j,\varphi_i), \quad B_i=F(\phi_i).
+\]
+\end{proposition}
+
+\begin{proof}
+ Una solución de~\eqref{eq:problema.elementos-finitos.1d}  (...)
+\end{proof}
+
+
+
+% ----------------------------
+
+\chapter{Nociones mínimas de espacios de Sobolev}
+
+\section{Derivada débil}
+\begin{definition}
+Denotamos $L^2(\Omega)$ al conjunto de las funciones $v:\Omega\to\R$  medibles en el sentido de Lebesgue y tales que $\int_\Omega v(\xx)^2 d\xx<\infty$.
+\end{definition}
+
+\begin{proposition}
+   $L^2(\Omega)$ es un espacio de Hilbert para el producto escalar
+  \begin{equation}
+    \label{eq:producto.escalar.L2}
+    (u, v) = \int_\Omega u(\xx) v(\xx) d\xx,
+  \end{equation}
+  cuya norma inducida es
+  \begin{equation}
+    \label{eq:norma.L2}
+    \|u\|_{L^2(\Omega)} = \left(\int_\Omega u(\xx)^2 d\xx \right)^{1/2}.
+  \end{equation}
+\end{proposition}
+
+\begin{definition}
+  Denotamos $D(\Omega)$ (o $C^\infty_c(\Omega)$) al espacio de funciones de clase $C^\infty$ con soporte compacto%
+  \footnote{No es evidente que existan funciones no triviales (distintas de la función cero) en $D(\Omega)$, ver por ejemplo~\cite{brezis:2017}}
+  en $\Omega$.
+\end{definition}
+
+\begin{definition}
+  Sea $v\in L^2(\Omega)$. Decimos que $v$ es \textbf{diferenciable en sentido débil} si para todo $i\in\{1,\dots,d\}$ existe una función, a la que denotamos $\partial_{x_i} v$, tal que 
+  \begin{displaymath}
+    \int_\Omega v\, \partial_{x_i} \varphi  = - \int_\Omega \partial_{x_i} v \, \varphi \quad \text{para todo } \varphi\in D(\Omega).
+  \end{displaymath}
+\end{definition}
+
+\begin{remark}
+  Si $v\in C^1(\overline\Omega)$, entonces $v$ es diferenciable en sentido débil y su derivada clásica coincide con la derivada débil.
+\end{remark}
+
+
+\section{El espacio $H^1(\Omega)$}
+\begin{definition}
+  Dado un abierto $\Omega\subset\R^d$, el espacio $H^1(\Omega)$ consiste en las funciones $v\in L^2(\Omega)$ tales que $v$ y sus derivadas débiles son de clase $L^2(\Omega)$.
+\end{definition}
+
+\begin{proposition}
+  $H^1(\Omega)$ es un espacio de Hilbert para el producto escalar
+  \begin{equation}
+    \label{eq:producto.escalar.H1}
+    (u, v) = \int_\Omega u(\xx) v(\xx) d\xx + \int_\Omega \nabla u(\xx) \cdot \nabla v(\xx) d\xx,
+  \end{equation}
+  cuya norma inducida es
+  \begin{equation}
+    \label{eq:norma.H1}
+    \|v\|_{H^1(\Omega)} = \left(\int_\Omega v(\xx)^2 d\xx + \int_\Omega |\nabla v(\xx)|^2 d\xx\right)^{1/2}.
+  \end{equation}
+\end{proposition}
+
+\begin{properties}~
+\begin{enumerate}
+  \item Si $v\in L^2(\Omega)$, y $\grad v=0$ (es decir, $\partial_{x_i}=0$ para todo $i\in\{1,\dots,d\}$), entonces $v=C$ (es decir, existe $C\in\R$ tal que $v(x)=C$ casi para todo $x\in\Omega$).
+  \item Toda función de $C^1(\Omega)$ con soporte compacto en $\overline\Omega$ está en $H^1(\Omega)$. Y si $\Omega$ es acotado, $C^1(\overline\Omega)\subset H^1(\Omega)$.
+  \item Toda función continuas y polinómica a trozos (sobre una triangulación \Th de $\Omega$), es decir del espacio
+    \begin{displaymath}
+      V_h=\{v \in C(\overline\Omega), v|_T\in\P_m \ \forall T\in\Th\}, \quad m\in\mathbb N,
+    \end{displaymath}
+    está en $H^1(\Omega)$ (ver ejercicio~\ref{ex:derivada.debil.funcion.polinomial.a.trozos}).
+  \item Pero, existen funciones de $H^1(\Omega)$ que no son continuas (excepto en el caso $d=1$), ver por ejemplo~\cite{allaire2007numerical}, capítulo 4.
+  \item  $D(\overline\Omega)$ es denso en $H^1(\Omega)$. 
+    \begin{itemize}
+      \item En particular, las funciones de $H^1(\Omega)$ se pueden escribir como límites (en la topología inducida por la norma en $H^1(\Omega)$) de funciones derivables.  
+      \item Observación: las funciones de $D(\overline\Omega)$ no necesariamente son cero en $\partial\Omega$. En efecto, sólo podemos asegurar que su soporte (el menor cerrado donde son distintas de cero) está en $\overline\Omega$. Podrían ser distintas de cero en todo $\overline\Omega$. 
+    \end{itemize}
+\end{enumerate}
+\end{properties}
+
+\section{El espacio $H_0^1(\Omega)$}
+\begin{definition}
+ Definimos el espacio de Sobolev $H_0^1(\Omega)$ como la clausura de $D(\Omega)$ en $H^1(\Omega)$. 
+\end{definition}
+
+
+\begin{proposition}~
+  \begin{enumerate}
+    \item
+  $H_0^1(\Omega)$ es un espacio de Hilbert para el producto escalar~\eqref{eq:producto.escalar.H1}. 
+\item Se verifica la siguiente desigualdad (desigualdad de Poincaré), para toda $v\in H_0^1(\Omega)$:
+  \begin{equation}
+    \label{eq:desigualdad.Poincare}
+    \int_\Omega \left| v(\xx)\right|^2 d\xx \le 
+    C \int_\Omega \left|\grad v(\xx)\right|^2 d\xx.
+  \end{equation}
+\item En consecuencia, la siguiente expresión define una norma en $H_0^1(\Omega)$ que es equivalente a la norma de $H^1(\Omega)$~\eqref{eq:norma.H1}:
+  \begin{equation} 
+    \norm{v}_{H_0^1(\Omega)} =  \left(\int_\Omega \left|\grad v(\xx)\right|^2 d\xx\right)^{1/2}.
+  \end{equation}
+\end{enumerate}
+\end{proposition}
+
+El siguiente resultado nos garantiza que, para funciones de $H^1(\Omega)$, tiene sentido definir la «traza», o generalización del concepto de restricción a $\partial\Omega$ de funciones continuas. 
+Hemos visto que en para $d\ge 2$, las funciones de $H^1(\Omega)$ no son, necesariamente, continuas. Se trata (familias de) de funciones integrables en el sentido de Lebesgue y, por tanto, no está claro el sentido de su restricción a un conjunto de medida nula como $\partial\Omega$.
+
+\begin{proposition}
+  Sea $\Omega$ un abierto acotado de clase $\classC1{}$. Para funciones continuas, definimos la aplicación «restricción a la frontera»:
+  \begin{align*}
+    H^1(\Omega)\cap C(\overline\Omega) & \to 
+    L^2(\partial\Omega)\cap C(\overline{\partial\Omega})
+    \\
+    v &\mapsto  v|_{\partial\Omega}.
+  \end{align*}
+Esta aplicación se puede extender continuamente a la siguiente aplicación en $H^1(\Omega)$, a la que seguimos llamando $\gamma_0$,
+  \begin{displaymath}
+    \gamma_0: H^1(\Omega)\to L^2(\partial\Omega),
+  \end{displaymath}
+  en el siguiente sentido: cuando $v\in H^1(\Omega)\cap C(\overline\Omega)$, $\gamma_0(v) = v|_{\partial\Omega}$ y además
+ \begin{displaymath}
+   \norm{v}_{L^2(\partial\Omega)} \le C \norm{v}_{H^1(\Omega)}.
+ \end{displaymath}
+\end{proposition}
+
+Por lo tanto, para funciones $v\in H^1(\Omega)$ podemos hablar de «la restricción a $\partial\Omega$» de $v$, $v|_{\partial\Omega}$.
+
+\begin{theorem}
+  El espacio 
+  \begin{displaymath}
+  H_0^1(\Omega) = \left\{ v\in H^1(\Omega), \enspace\text{tales que}
+  \enspace v|_{\partial\Omega}=0 \right\}.
+  \end{displaymath}
+\end{theorem}
+
+\begin{proposition} 
+  Si $\Omega$ es un dominio de clase $\classC1{}$, entonces se verifican en sentido débil las fórmulas de integración por partes de~\eqref{eq:partes.1}, \eqref{eq:partes.2} y  la fórmula de Green~\eqref{eq:green} (las dos primeras para $u,v,w\in H^1(\Omega)$ y la última para $u\in H^2(\Omega)$, el espacio de Sobolev de funciones con derivada segunda débil en $L^2(\Omega)$).
+\end{proposition}
+
+\begin{theorem}
+  \label{teo:existencia.poisson.dirichlet}
+  Sea $\Omega$ un dominio de clase $\classC1{}$ y sea $f\in L^2(\Omega)$. Entonces existe una única $u\in H_0^1(\Omega)$ tal que 
+  \begin{displaymath}
+    \int_\Omega \grad u\grad v\, d\xx = \int_\Omega f\, v\, d\xx \quad\forall v\in H_0^1(\Omega).
+  \end{displaymath}
+\end{theorem}
+
+\begin{proof}
+  Basta considerar el espacio de Hilbert $V=H_0^1(\Omega)$ y aplicar el teorema de Lax-Milgaram para las formas bilineal y lineal definidas respectivamente en~\eqref{eq:forma.bilineal.poisson.dirichlet} y en~\eqref{eq:forma.lineal.poisson.dirichlet}.
+\end{proof}
+
+\chapter{Más sobre el método de los elementos finitos para EDP elípticas}
+
+\section{Problema de Poisson-Dirichlet con condiciones no homogéneas}
+
+Planteamos el problema: 
+\begin{equation}
+	\left\{
+	\begin{aligned}
+		-\Delta u & = f \en{\Omega},            \\
+		u         & = g \sobre{\partial\Omega}, \\
+	\end{aligned}
+	\right.
+	\label{eq:poisson.dirichlet.NO.homog}
+\end{equation}
+donde $f:\Omega\to\R$ y $g:\partial\Omega\to\R$ son funciones continuas dadas. Para plantear la formulación débil, es suficiente considerar $f\in L^2(\Omega)$, $g\in L^2(\partial\Omega)$, aunque este último espacio es demasiado amplio y será necesario un detalle técnico: tendremos que admitir que $g$ está en el espacio $\gamma_0(H^1(\Omega))\subset L^2(\Omega)$, es decir, en el subconjunto de $L^2(\Omega)$ formado por la imagen del operador traza, $\gamma_0:H^1(\Omega)\to L^2(\partial\Omega)$.O sea, que existe $u_g\in H^1(\Omega)$ tal que $g=\gamma_0(u_g)$.  
+
+
+
+
+Entonces definiendo los los espacios $V=H^1(\Omega)$ y $\widehat V = H_0^1(\Omega)$, se verifica el siguiente resultado de existencia de solución variacional para el problema anterior:
+\begin{theorem}
+  Sea $\Omega$ un dominio de clase $\classC1{}$.   Si $f\in L^2(\Omega)$ y $g\in \gamma_0(H^1(\Omega)) \subset L^2(\partial\Omega)$, entonces existe una única $u\in V$ tal que:
+  \begin{equation}
+    \label{eq:poisson.form.variacional}
+    a(u,v) = L(v) \quad\forall v\in \widehat V,
+  \end{equation}
+  donde $a(u,v) = \int_\Omega \grad u\grad v\, d\xx$ y $L(v) = \int_\Omega f\, v\, d\xx$.
+\end{theorem}
+
+\begin{proof}
+  Para el caso homogéneo (en el que $g=0$) hemos demostrado en~\eqref{teo:existencia.poisson.dirichlet} que existe una única solución variacional, $\widehat u_0\in  H_0^1(\Omega)$ de~\eqref{eq:poisson.dirichlet.NO.homog}, es decir,
+  \begin{displaymath}
+    a(\widehat u_0,v) = L(v) \quad\forall v\in \widehat V = H_0^1(\Omega).
+  \end{displaymath}
+%
+  Por hipótesis, existe $u_g\in H^1(\Omega)$ tal que $g=\gamma_0(u_g)$, luego
+  \begin{displaymath}
+    a(\widehat u_0 + u_g, v) = L(v) + a(u_g,v) \quad\forall v\in \widehat V.
+  \end{displaymath}
+%
+  Entonces, sea $\widetilde u_0\in H_0^1(\Omega)$ la solución del problema variacional
+  \begin{equation}
+    a(\widetilde u_0,v) = -a(u_g, v) \quad\forall v\in H_0^1(\Omega)
+  \end{equation}
+  y tomemos $u=\widehat u_0 + u_g + \widetilde u_0$.
+  Se verifica que, para toda $v\in \widehat V$,
+  \begin{align*}
+    a(u,v) &= a(\widehat u_0, v) + a(u_g,v) - a(\widetilde u_0, v) \\
+           &= L(v) +a(u_g,v) - a(u_g,v) = L(v)
+  \end{align*}
+  y además,
+  \[
+    u|_{\partial\Omega} = \widehat u|_{\partial\Omega} + u_g|_{\partial\Omega} + \widetilde u|_{\partial\Omega} 
+    = 0 + g + 0.
+  \]
+\end{proof}
+
+\begin{corolary} Sea $\Omega$ un abierto acotado con frontera de clase $\classC1{}$ y sean $f\in C(\overline\Omega)$ y $g\in C(\overline{\partial\Omega})$. Sea $\Th=\bigcup_{i=1}^N\{T_i\}$ una malla de $\Omega$ y, dado $m\in\N$, consideremos los espacios
+  \begin{align*}
+    V_h = \left\{ v_h\in C(\Omega)\; / \ v|_{T_i} \in\P_m, \ i=1,\dots,N, \ v|_{\partial\Omega} = g \right\}.
+    \\
+    \widehat V_h = \left\{ v_h\in C(\Omega)\; / \ v|_{T_i} \in\P_m, \ i=1,\dots,N, \ v|_{\partial\Omega} = 0 \right\}.
+  \end{align*} 
+  Entonces existe una única $u_h\in V$ tal que
+  \begin{equation}
+    \label{eq:problema.elementos-finitos}
+    a(u_h,v_h) = L(v_h) \quad\forall v_h\in \widehat V_h.
+  \end{equation}
+
+\end{corolary}
+\section{Estimaciones de error y orden de convergencia}
+
+La clave en las estimaciones de error está en comprobar que el error es ortogonal al espacio $V_h$, en el siguiente sentido: 
+\begin{proposition}
+Sea $u\in V=H_0(\Omega)$ la solución del la formulación variacional del problema de Poisson~\eqref{eq:poisson.form.variacional}.
+Sea $u_h\in V_h$ la solución del problema de elementos finitos~\eqref{eq:problema.elementos-finitos}. Entonces el error $u-u_h$ es $a$--ortogonal a $\widehat V_h = H_0^1(\Omega)$, es decir:
+\[
+  a(u-u_h, v_h) = 0 \quad \forall v_h\in \widehat V_h.
+\]
+\end{proposition}
+
+\begin{proof}
+ Para todo $v_h\in \widehat V_h \subset V$, tendremos que
+ \[
+   a(u-u_h,v_h)=a(u,v_h)-a(u_h,v_h)=L(v_h)-L(v_h)=0.
+ \]
+\end{proof}
+
+\begin{remark}
+Aunque el resultado anterior se ha enunciado en el caso en que $u_h$ es una aproximación de $u$ por elementos finitos, puede generalizarse al caso más general de métodos de Galerkin, en el que $V_h$ es cualquier subespacio finito-dimensional de un espacio de Hilbert $V$.
+\end{remark}
+
+\begin{theorem} 
+  Sean $u\in V=H_0(\Omega)$ la solución del la formulación variacional del problema de Poisson~\eqref{eq:poisson.form.variacional} y $u_h$ la solución de elementos finitos asociada. Entonces
+  $$
+  \label{th:estimaciones.error}
+  \norm{u-u_h}_{H_0^1(\Omega)} \leq \norm{u-\overline u_h}_{H_0^1(\Omega)}, \quad \forall \overline u_h\in V_h.
+  $$
+\end{theorem}
+
+\begin{proof}
+  Pasa aplicar coercitividad y la proposición anterior.
+\end{proof}
+
+\begin{corolary}[Orden de convergencia en norma de energía] 
+  $$
+  \norm{u-u_h}_{H_0^1(\Omega)} \leq C h^{m+1} \norm{f}_{L^2(\Omega)}.
+  $$
+\end{corolary}
+
+\begin{proof}
+  Puesto que el error $u-u_h$ es menor que $u-\overline u_h$ para toda función polinómica a trozos, $\overline u_h\in V_h$, podemos acotar por el error para el polinomio de interpolación.
+\end{proof}
+
+\bibliography{biblio}
+\end{document}
+
+\appendix
+
+\chapter{Ejercicios}
+
+\begin{exercise}
+  Demostrar usando~\eqref{eq:partes.1} que si $\Omega$ es un dominio de clase $\classC1{}$,  $\uuu\in \left[\classC1{\overline\Omega}\right]^d$ y $v\in\classC1{\overline\Omega}$, entonces se verifica la siguiente relación, conocida como \emph{formula de Stokes}:
+	$$
+	\int_\Omega \nabla\cdot \uuu(\xx)\; v(\xx) \, d\xx =
+	- \int_\Omega \uuu(\xx)\cdot \nabla v(\xx) \, d\xx
+	+ \int_{\partial\Omega} (\uuu(\xx)\cdot\nn(\xx))\, v(\xx)  \, ds,
+	$$
+	donde $\nabla\cdot\uuu(x)=\partial_{x_1} u_1(\xx) + \cdots + \partial_{x_d} u_d(\xx)$ es la divergencia del vector $\uu$. \end{exercise}
+
+\begin{exercise}
+Consideremos el problema del Laplaciano con condiciones de contorno Neumann homogéneas en un abierto acotado $\Omega$:
+\begin{equation}
+  \left\{  
+    \begin{aligned}
+      -\Delta\uu = f &\qquad \text{en } \Omega, \\
+      \nabla\uu\cdot\nn = 0 &\qquad \text{sobre } \partial\Omega.
+    \end{aligned}
+  \right.
+  \label{eq:poisson.neumann.homog}
+\end{equation}
+Demostrar que una función $\uu\in\classC2{\overline\Omega}$ es solución de~\eqref{eq:poisson.neumann.homog} si y solo si verifica las siguiente ecuación variacional:
+\[ 
+  \int_\Omega\nabla\uu \, \nabla\vv \, d\xx = \int_\Omega f\, \vv \, d\xx \quad\forall\vv\in C^1(\overline\Omega). 
+\]
+Concluir que para que exista una solución $\uu\in\classC2{\overline\Omega}$ de~\eqref{eq:poisson.neumann.homog} es necesario que $\int_\Omega f(\xx)\, d\xx=0$.
+\end{exercise}
+
+
+
+\begin{exercise}
+  \label{ex:Cont.Omega.inner.not.Hilbert}
+  Sea $\Omega=(-1,1)\subset\R$. Para demostrar que el espacio $\Cont{\overline\Omega}$ no es de Hilbert para el producto escalar~\eqref{eq:Cont.Omega.inner}, definir una sucesión $\{\uu_n\}_{n=1}^\infty\subset\Cont{\overline\Omega}$ que sea convergente en norma $\norm{\vv}_{L^2}=\left(\int_\Omega \vv^2 d\xx\right)^{1/2}$ a una función $\uu$ discontinua.
+\end{exercise}
+
+\begin{exercise}
+  \label{ex:demo.Lax-Milgram}
+  Utilizando herramientas de análisis funcional, se puede demostrar el teorema de Lax-Milgram~\ref{th:Lax-Milgram}.
+  \begin{enumerate}
+    \item 
+      Demostrar el teorema de Lax-Milgram para el \textbf{caso finito-dimensional}. Ideas:
+      \begin{itemize}
+        \item Para cada $u\in H$, considerar la aplicación lineal $a(u,\cdot):v\mapsto a(u,v)$.
+        \item Mediante el teorema de representación de Riesz, identificar esta aplicación con un elemento $Au\in H$ y, de la misma forma, identificar $L(\cdot)$ con un elemento $b\in H$.
+        \item Demostrar que la aplicación $u\mapsto Au$ es continua e inyectiva (y, por tanto, biyectiva).
+      \end{itemize}
+    \item Generarlizarlo al \textbf{caso infinito-dimensional}. Para ver que $A$ es sobreyectiva, demostrar que el espacio imagen de $A$ es cerrado y que su ortogonal es $\{0\}$. Ver por ejemplo~\cite{allaire2007numerical}.
+  \end{enumerate}
+\end{exercise}
+
+\begin{exercise}
+  \label{ex:derivada.debil.funcion.polinomial.a.trozos}
+  Sea una triangulación \Th de $\Omega\subset\R^d$ y $m\in\mathbb N$. Demostrar que para toda función $v$ del espacio 
+  \begin{displaymath}
+    V_h=\{v \in C(\overline\Omega), v|_T\in\P_m \ \forall T\in\Th\} 
+  \end{displaymath}
+  la derivada débil $\partial_{x_i}v$ definida como la función $D_i v$ que en, en el interior de cada cada $T\in \Th$, coincide con $\partial_{x_i}(v|_T)$, es de $L^2(\Omega)$ y por lo tanto $v\in H^1(\Omega)$.
+\end{exercise}
+
+% ----------------------------
 
 \bibliographystyle{unsrt}
 \bibliography{apuntes-MEF}
